@@ -54,7 +54,7 @@ jobs:
         with:
           haxe-version: "4.3.6"
 
-      - name: Set up Haxelib
+           - name: Set up Haxelib
         working-directory: psych-work
         shell: bash
         run: |
@@ -62,7 +62,8 @@ jobs:
           mkdir -p "$HOME/haxelib"
           haxelib setup "$HOME/haxelib"
           haxelib install lime 8.1.3
-          haxelib install Project.xml
+          haxelib run lime setup
+          haxelib install hxcpp
 
       - name: Build HTML5 release
         working-directory: psych-work
