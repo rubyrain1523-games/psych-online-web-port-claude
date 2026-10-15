@@ -9,4 +9,4 @@ Patches that build Friday Night Funkin' Psych Online (Snirozu/Funkin-Psych-Onlin
 - Not supported: Lua mods, videos, Discord, 3D stages, RAR/7z, raw-socket online play.
 
 ## Download the playable build
-Get `PsychOnline-Web-full.zip` from the **Releases** page, extract it, run `python3 serve.py` (or `start-server.bat`) and open http://localhost:8000.
+The full playable build is in the `PsychOnline-Web/` folder. Use **Code → Download ZIP** (or clone), then inside `PsychOnline-Web/` run `python3 serve.py` (or `start-server.bat`) and open http://localhost:8000.
