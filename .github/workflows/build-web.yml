@@ -2,11 +2,8 @@ name: Build Psych Online Web
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "src-patch/**"
-      - "scripts/**"
-      - ".github/workflows/build-web.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -47,14 +44,14 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git python3 build-essential libgl1-mesa-dev libx11-dev libxext-dev libxrender-dev libxinerama-dev libxcursor-dev libxi-dev libasound2-dev
+          sudo apt-get install -y git python3 build-essential zip libgl1-mesa-dev libx11-dev libxext-dev libxrender-dev libxinerama-dev libxcursor-dev libxi-dev libasound2-dev
 
       - name: Install Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: "4.3.6"
 
-           - name: Set up Haxelib
+      - name: Set up Haxelib
         working-directory: psych-work
         shell: bash
         run: |
@@ -82,7 +79,7 @@ jobs:
             find psych-work/export -maxdepth 5 -type f 2>/dev/null | head -100 || true
             exit 1
           fi
-          if ! find "$OUT" -maxdepth 2 -type f \( -name 'index.html' -o -name '*.html' \) | grep -q .; then
+          if ! find "$OUT" -maxdepth 2 -type f -name '*.html' | grep -q .; then
             echo "No HTML entry page found in $OUT"
             find "$OUT" -maxdepth 2 -type f | head -100
             exit 1
@@ -103,10 +100,10 @@ jobs:
 
           Extract Psych-Online-Web-HTML5.zip and serve the extracted folder
           using a local web server or upload the folder to a static web host.
-          Opening index.html directly with file:// may not work because browsers
-          restrict some game assets when loaded from local files.
+          Opening index.html directly may not work because browsers restrict
+          some game assets loaded from local files.
 
-          This is a browser build. It is not a Windows/macOS/Linux desktop installer.
+          This is a browser build, not a desktop installer.
           TXT
 
       - name: Upload downloadable build
