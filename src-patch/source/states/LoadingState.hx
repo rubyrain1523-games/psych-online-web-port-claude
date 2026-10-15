@@ -64,9 +64,17 @@ class LoadingState extends MusicBeatState
 				callbacks = new MultiCallback(onLoad);
 				var introComplete = callbacks.add("introComplete");
 				if (PlayState.SONG != null) {
+					#if html5
+					for (snd in Paths.webSongSounds(PlayState.SONG.song))
+						checkLoadSong(snd);
+					#else
+					#if html5
+					preloadSongAudioWeb();
+					#end
 					checkLoadSong(getSongPath());
 					if (PlayState.SONG.needsVoices)
 						checkLoadSong(getVocalPath());
+					#end
 				}
 				checkLibrary("shared");
 				if(directory != null && directory.length > 0 && directory != 'shared') {
@@ -80,25 +88,46 @@ class LoadingState extends MusicBeatState
 		);
 	}
 	
+	function waitForSound(snd:openfl.media.Sound)
+	{
+		// browser: audio decodes asynchronously, wait until its length is known
+		if (snd == null || snd.length > 0) return;
+		var cb = callbacks.add("snd:" + Std.string(Math.random()));
+		var waited:Float = 0;
+		new FlxTimer().start(0.05, function(t:FlxTimer) {
+			waited += 0.05;
+			if (snd.length > 0 || waited > 20)
+			{
+				t.cancel();
+				cb();
+			}
+		}, 0);
+	}
+
+	#if html5
+	function preloadSongAudioWeb()
+	{
+		if (PlayState.SONG == null) return;
+		var sn = Paths.formatToSongPath(PlayState.SONG.song);
+		var dirs:Array<String> = ['assets/songs/' + sn];
+		for (m in Mods.getModDirectories()) dirs.push('mods/' + m + '/songs/' + sn);
+		for (d in dirs)
+		{
+			if (!FileSystem.exists(d) || !FileSystem.isDirectory(d)) continue;
+			for (f in FileSystem.readDirectory(d))
+			{
+				if (f.endsWith('.mp3') || f.endsWith('.ogg') || f.endsWith('.wav'))
+					waitForSound(Paths.webSound(d + '/' + f));
+			}
+		}
+	}
+	#end
+
 	function checkLoadSong(path:Dynamic)
 	{
 		if (!(path is String))
 		{
-			// mod song (Sound object): in the browser its audio decodes asynchronously, wait until length is known
-			var snd:openfl.media.Sound = cast path;
-			if (snd != null && snd.length <= 0)
-			{
-				var cb = callbacks.add("modsong:" + Std.string(Math.random()));
-				var waited:Float = 0;
-				new FlxTimer().start(0.05, function(t:FlxTimer) {
-					waited += 0.05;
-					if (snd.length > 0 || waited > 15)
-					{
-						t.cancel();
-						cb();
-					}
-				}, 0);
-			}
+			waitForSound(cast path);
 			return;
 		}
 		if (!Assets.cache.hasSound(path))

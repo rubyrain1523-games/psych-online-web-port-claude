@@ -137,6 +137,7 @@ class Main extends Sprite
 
 		#if html5
 		// console helper: psychDownloadMod("https://.../mod.zip") downloads and installs a mod into the browser cache
+		js.Syntax.code("window.psychSetting = {0}", (k:String, v:Dynamic) -> { ClientPrefs.data.gameplaySettings.set(k, v); });
 		js.Syntax.code("window.psychDownloadMod = {0}", (url:String) -> { new online.mods.ModDownloader(url.split('/').pop().split('?')[0], url); });
 		#end
 		setupGame();

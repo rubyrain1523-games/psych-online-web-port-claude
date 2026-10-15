@@ -229,12 +229,19 @@ class Paths
 		return file;
 	}
 
-	inline static public function voices(song:String, postfix:String = null, songSuffix:String = null):Any {
+	static public function voices(song:String, postfix:String = null, songSuffix:String = null):Any {
 		var voices:Sound = null;
 		try {
 			var songKey:String = '${formatToSongPath(song)}/Voices' + (songSuffix ?? "");
 			if (postfix != null)
 				songKey += '-' + postfix;
+			#if html5
+			#if MODS_ALLOWED
+			if (FileSystem.exists(modsSounds('songs', songKey)))
+				return returnSound('songs', songKey);
+			#end
+			return webSound('assets/songs/$songKey.$SOUND_EXT');
+			#end
 			var sound = returnSound('songs', songKey);
 			if (sound == null || sound.length <= 0)
 				sound = null;
@@ -255,7 +262,7 @@ class Paths
 		if (FileSystem.exists(modsSounds('songs', songKeyWeb)))
 			return (returnSound('songs', songKeyWeb) : Dynamic);
 		#end
-		return ('songs:assets/songs/$songKeyWeb.$SOUND_EXT' : Dynamic);
+		return (webSound('assets/songs/$songKeyWeb.$SOUND_EXT') : Dynamic);
 		#else
 		var songKey:String = '${formatToSongPath(song)}/Inst' + (songSuffix ?? "");
 		var inst = returnSound('songs', songKey);
@@ -501,6 +508,38 @@ class Paths
 	public static var currentTrackedSounds:Map<String, Sound> = [];
 	#if html5
 	static var webModSounds:Map<String, Sound> = new Map();
+
+	/** Browser: build (and cache forever) a Sound from a file in the virtual file system. */
+	public static function webSound(path:String):Sound {
+		var cached = webModSounds.get(path);
+		if (cached != null) return cached;
+		if (!FileSystem.exists(path)) return null;
+		var bytes = sys.io.File.getBytes(path);
+		var ab = lime.media.AudioBuffer.fromBytes(bytes);
+		if (ab == null) return null;
+		untyped ab.src.load();
+		var snd = Sound.fromAudioBuffer(ab);
+		webModSounds.set(path, snd);
+		return snd;
+	}
+
+	/** Browser: every audio file belonging to a song (base game + mods), so they can be preloaded. */
+	public static function webSongSounds(song:String):Array<Sound> {
+		var out:Array<Sound> = [];
+		var folder = formatToSongPath(song);
+		var dirs:Array<String> = ['assets/songs/' + folder];
+		for (m in Mods.getModDirectories())
+			dirs.push('mods/' + m + '/songs/' + folder);
+		for (d in dirs) {
+			if (!FileSystem.exists(d) || !FileSystem.isDirectory(d)) continue;
+			for (f in FileSystem.readDirectory(d)) {
+				if (!StringTools.endsWith(f, '.' + SOUND_EXT)) continue;
+				var snd = webSound(d + '/' + f);
+				if (snd != null) out.push(snd);
+			}
+		}
+		return out;
+	}
 	#end
 	public static function returnSound(path:String, key:String, ?library:String) {
 		#if MODS_ALLOWED
@@ -509,15 +548,7 @@ class Paths
 			try {
 				if(!currentTrackedSounds.exists(file)) {
 					#if html5
-					var _cached = webModSounds.get(file);
-					if (_cached == null) {
-						var _b = sys.io.File.getBytes(file);
-						var _ab = lime.media.AudioBuffer.fromBytes(_b);
-						untyped _ab.src.load();
-						_cached = Sound.fromAudioBuffer(_ab);
-						webModSounds.set(file, _cached);
-					}
-					currentTrackedSounds.set(file, _cached);
+					currentTrackedSounds.set(file, webSound(file));
 					#else
 					currentTrackedSounds.set(file, Sound.fromFile(file));
 					#end

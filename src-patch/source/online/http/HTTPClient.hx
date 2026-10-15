@@ -317,7 +317,7 @@ class HTTPClient {
 			status = COMPLETED;
 		}
 		catch (exc) {
-			trace('requestWeb failed: ' + exc);
+			trace('requestWeb failed: ' + exc + ' host=' + (address != null ? address.host + ':' + address.port : 'null') + ' path=' + (requestData != null ? requestData.path : 'null'));
 			response.exception = exc;
 			status = FAILED(exc);
 		}

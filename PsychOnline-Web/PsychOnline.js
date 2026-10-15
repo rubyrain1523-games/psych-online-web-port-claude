@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "6";
+	app.meta.h["build"] = "7";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -3556,7 +3556,7 @@ Main.onCrash = function(exc,closeGame) {
 	if(closeGame == null) {
 		closeGame = true;
 	}
-	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 402, className : "Main", methodName : "onCrash"});
+	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 403, className : "Main", methodName : "onCrash"});
 	if(exc == null) {
 		exc = new haxe_Exception("Empty Uncaught Exception");
 	}
@@ -3641,6 +3641,9 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		if(this.hasEventListener("addedToStage")) {
 			this.removeEventListener("addedToStage",$bind(this,this.init));
 		}
+		window.psychSetting = function(k,v) {
+			backend_ClientPrefs.data.gameplaySettings.h[k] = v;
+		};
 		window.psychDownloadMod = function(url) {
 			return new online_mods_ModDownloader(url.split("/").pop().split("?")[0],url);
 		};
@@ -3698,7 +3701,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				online_network_FunkinNetwork.ping();
 			} catch( _g ) {
 				var exc = haxe_Exception.caught(_g);
-				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 327, className : "Main", methodName : "setupGame"});
+				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 328, className : "Main", methodName : "setupGame"});
 			}
 		},60,function(_) {
 		});
@@ -5117,24 +5120,6 @@ Lambda.exists = function(it,f) {
 		}
 	}
 	return false;
-};
-Lambda.fold = function(it,f,first) {
-	var x = $getIterator(it);
-	while(x.hasNext()) {
-		var x1 = x.next();
-		first = f(x1,first);
-	}
-	return first;
-};
-Lambda.foldi = function(it,f,first) {
-	var i = 0;
-	var x = $getIterator(it);
-	while(x.hasNext()) {
-		var x1 = x.next();
-		first = f(x1,first,i);
-		++i;
-	}
-	return first;
 };
 Lambda.count = function(it,pred) {
 	var n = 0;
@@ -12204,11 +12189,10 @@ backend_Paths.voices = function(song,postfix,songSuffix) {
 		if(postfix != null) {
 			songKey += "-" + postfix;
 		}
-		var sound = backend_Paths.returnSound("songs",songKey);
-		if(sound == null || sound.get_length() <= 0) {
-			sound = null;
+		if(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKey + "." + "mp3"))) {
+			return backend_Paths.returnSound("songs",songKey);
 		}
-		voices = sound;
+		return backend_Paths.webSound("assets/songs/" + songKey + "." + "mp3");
 	} catch( _g ) {
 		voices = null;
 	}
@@ -12221,7 +12205,7 @@ backend_Paths.inst = function(song,songSuffix) {
 	if(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3"))) {
 		return backend_Paths.returnSound("songs",songKeyWeb);
 	}
-	return "songs:assets/songs/" + songKeyWeb + "." + "mp3";
+	return backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3");
 };
 backend_Paths.image = function(key,library,allowGPU) {
 	if(allowGPU == null) {
@@ -12455,20 +12439,81 @@ backend_Paths.formatToSongPath = function(path) {
 	var path1 = backend_Paths.invalidChars.split(StringTools.replace(path," ","-")).join("-");
 	return backend_Paths.hideChars.split(path1).join("").toLowerCase();
 };
+backend_Paths.webSound = function(path) {
+	var cached = backend_Paths.webModSounds.h[path];
+	if(cached != null) {
+		return cached;
+	}
+	if(!sys_FileSystem.exists(path)) {
+		return null;
+	}
+	var bytes = sys_io_File.getBytes(path);
+	var ab = lime_media_AudioBuffer.fromBytes(bytes);
+	if(ab == null) {
+		return null;
+	}
+	ab.get_src().load();
+	var snd = openfl_media_Sound.fromAudioBuffer(ab);
+	backend_Paths.webModSounds.h[path] = snd;
+	return snd;
+};
+backend_Paths.webSongSounds = function(song) {
+	var out = [];
+	var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
+	var folder = backend_Paths.hideChars.split(path).join("").toLowerCase();
+	var dirs = ["assets/songs/" + folder];
+	var _g = 0;
+	var list = [];
+	var modsFolder = "mods/";
+	if(sys_FileSystem.exists(modsFolder)) {
+		var _g1 = 0;
+		var _g2 = sys_FileSystem.readDirectory(modsFolder);
+		while(_g1 < _g2.length) {
+			var folder1 = _g2[_g1];
+			++_g1;
+			var path = haxe_io_Path.join([modsFolder,folder1]);
+			if(sys_FileSystem.isDirectory(path) && backend_Mods.ignoreModFolders.indexOf(folder1.toLowerCase()) == -1 && list.indexOf(folder1) == -1) {
+				list.push(folder1);
+			}
+		}
+	}
+	var _g1 = list;
+	while(_g < _g1.length) {
+		var m = _g1[_g];
+		++_g;
+		dirs.push("mods/" + m + "/songs/" + folder);
+	}
+	var _g = 0;
+	while(_g < dirs.length) {
+		var d = dirs[_g];
+		++_g;
+		if(!sys_FileSystem.exists(d) || !sys_FileSystem.isDirectory(d)) {
+			continue;
+		}
+		var _g1 = 0;
+		var _g2 = sys_FileSystem.readDirectory(d);
+		while(_g1 < _g2.length) {
+			var f = _g2[_g1];
+			++_g1;
+			if(!StringTools.endsWith(f,"." + "mp3")) {
+				continue;
+			}
+			var snd = backend_Paths.webSound(d + "/" + f);
+			if(snd != null) {
+				out.push(snd);
+			}
+		}
+	}
+	return out;
+};
 backend_Paths.returnSound = function(path,key,library) {
 	var file = backend_Paths.modFolders(path + "/" + key + "." + "mp3");
 	if(sys_FileSystem.exists(file)) {
 		try {
 			if(!Object.prototype.hasOwnProperty.call(backend_Paths.currentTrackedSounds.h,file)) {
-				var _cached = backend_Paths.webModSounds.h[file];
-				if(_cached == null) {
-					var _b = sys_io_File.getBytes(file);
-					var _ab = lime_media_AudioBuffer.fromBytes(_b);
-					_ab.get_src().load();
-					_cached = openfl_media_Sound.fromAudioBuffer(_ab);
-					backend_Paths.webModSounds.h[file] = _cached;
-				}
-				backend_Paths.currentTrackedSounds.h[file] = _cached;
+				var this1 = backend_Paths.currentTrackedSounds;
+				var value = backend_Paths.webSound(file);
+				this1.h[file] = value;
 			}
 		} catch( _g ) {
 			haxe_NativeStackTrace.lastError = _g;
@@ -98662,1333 +98707,6 @@ flxanimate_zip_Zip.prototype = {
 	}
 	,__class__: flxanimate_zip_Zip
 };
-var funkin_vis_AudioBuffer = function(data,sampleRate) {
-	this.data = data;
-	this.sampleRate = sampleRate;
-};
-$hxClasses["funkin.vis.AudioBuffer"] = funkin_vis_AudioBuffer;
-funkin_vis_AudioBuffer.__name__ = "funkin.vis.AudioBuffer";
-funkin_vis_AudioBuffer.prototype = {
-	data: null
-	,sampleRate: null
-	,__class__: funkin_vis_AudioBuffer
-};
-var funkin_vis_AudioClip = function() { };
-$hxClasses["funkin.vis.AudioClip"] = funkin_vis_AudioClip;
-funkin_vis_AudioClip.__name__ = "funkin.vis.AudioClip";
-funkin_vis_AudioClip.__isInterface__ = true;
-funkin_vis_AudioClip.prototype = {
-	get_currentFrame: null
-	,audioBuffer: null
-	,source: null
-	,__class__: funkin_vis_AudioClip
-	,__properties__: {get_currentFrame:"get_currentFrame"}
-};
-var funkin_vis_LogHelper = function() { };
-$hxClasses["funkin.vis.LogHelper"] = funkin_vis_LogHelper;
-funkin_vis_LogHelper.__name__ = "funkin.vis.LogHelper";
-funkin_vis_LogHelper.log2 = function(x) {
-	return Math.log(x) / Math.log(2);
-};
-funkin_vis_LogHelper.log10 = function(x) {
-	return Math.log(x) / Math.log(10);
-};
-var funkin_vis_Scaling = function() { };
-$hxClasses["funkin.vis.Scaling"] = funkin_vis_Scaling;
-funkin_vis_Scaling.__name__ = "funkin.vis.Scaling";
-funkin_vis_Scaling.freqScaleMel = function(freq) {
-	return funkin_vis_LogHelper.log2(1 + freq / 700);
-};
-funkin_vis_Scaling.invFreqScaleMel = function(x) {
-	return 700 * Math.pow(2,x - 1);
-};
-funkin_vis_Scaling.freqScaleBark = function(freq) {
-	return 26.81 * freq / (1960 + freq) - 0.53;
-};
-funkin_vis_Scaling.invFreqScaleBark = function(x) {
-	return 1960 / (26.81 / (x + .53) - 1);
-};
-funkin_vis_Scaling.freqScaleLog = function(freq) {
-	return funkin_vis_LogHelper.log10(1 + freq / 1000);
-};
-funkin_vis_Scaling.invFreqScaleLog = function(x) {
-	return 1000 * Math.pow(10,x - 1);
-};
-var funkin_vis__$internal_html5_AnalyzerNode = function(audioClip) {
-	this.fftSize = 2048;
-	this.minDecibels = -100;
-	this.maxDecibels = -30;
-	haxe_Log.trace("Loading audioClip",{ fileName : "funkin/vis/_internal/html5/AnalyzerNode.hx", lineNumber : 25, className : "funkin.vis._internal.html5.AnalyzerNode", methodName : "new"});
-	this.analyzer = new AnalyserNode(audioClip.source._sounds[0]._node.context);
-	audioClip.source._sounds[0]._node.connect(this.analyzer);
-	this.getFloatFrequencyData();
-};
-$hxClasses["funkin.vis._internal.html5.AnalyzerNode"] = funkin_vis__$internal_html5_AnalyzerNode;
-funkin_vis__$internal_html5_AnalyzerNode.__name__ = "funkin.vis._internal.html5.AnalyzerNode";
-funkin_vis__$internal_html5_AnalyzerNode.prototype = {
-	analyzer: null
-	,maxDecibels: null
-	,minDecibels: null
-	,fftSize: null
-	,getFloatFrequencyData: function() {
-		var array = new Float32Array(this.analyzer.frequencyBinCount);
-		this.analyzer.fftSize = this.fftSize;
-		this.analyzer.minDecibels = this.minDecibels;
-		this.analyzer.maxDecibels = this.maxDecibels;
-		this.analyzer.getFloatFrequencyData(array);
-		return array;
-	}
-	,__class__: funkin_vis__$internal_html5_AnalyzerNode
-};
-var funkin_vis_audioclip_frontends_LimeAudioClip = function(audioSource) {
-	var data = audioSource.buffer.data;
-	var sampleRate = audioSource.buffer.get_src()._sounds[0]._node.context.sampleRate;
-	this.audioBuffer = new funkin_vis_AudioBuffer(data,sampleRate);
-	this.source = audioSource.buffer.get_src();
-};
-$hxClasses["funkin.vis.audioclip.frontends.LimeAudioClip"] = funkin_vis_audioclip_frontends_LimeAudioClip;
-funkin_vis_audioclip_frontends_LimeAudioClip.__name__ = "funkin.vis.audioclip.frontends.LimeAudioClip";
-funkin_vis_audioclip_frontends_LimeAudioClip.__interfaces__ = [funkin_vis_AudioClip];
-funkin_vis_audioclip_frontends_LimeAudioClip.prototype = {
-	audioBuffer: null
-	,source: null
-	,get_currentFrame: function() {
-		var dataLength = 0;
-		dataLength = this.source.length;
-		var value = flixel_math_FlxMath.remapToRange(flixel_FlxG.sound.music._time,0,flixel_FlxG.sound.music._length,0,dataLength) | 0;
-		if(value < 0) {
-			return -1;
-		}
-		return value;
-	}
-	,__class__: funkin_vis_audioclip_frontends_LimeAudioClip
-	,__properties__: {get_currentFrame:"get_currentFrame"}
-};
-var funkin_vis_dsp_Complex = {};
-funkin_vis_dsp_Complex.__properties__ = {get_magnitude:"get_magnitude",get_angle:"get_angle"};
-funkin_vis_dsp_Complex._new = function(real,imag) {
-	return { real : real, imag : imag};
-};
-funkin_vis_dsp_Complex.fromReal = function(r) {
-	return { real : r, imag : 0};
-};
-funkin_vis_dsp_Complex.get_angle = function(this1) {
-	return Math.atan2(this1.imag,this1.real);
-};
-funkin_vis_dsp_Complex.get_magnitude = function(this1) {
-	return Math.sqrt(this1.real * this1.real + this1.imag * this1.imag);
-};
-funkin_vis_dsp_Complex.add = function(this1,rhs) {
-	return { real : this1.real + rhs.real, imag : this1.imag + rhs.imag};
-};
-funkin_vis_dsp_Complex.sub = function(this1,rhs) {
-	return { real : this1.real - rhs.real, imag : this1.imag - rhs.imag};
-};
-funkin_vis_dsp_Complex.mult = function(this1,rhs) {
-	return { real : this1.real * rhs.real - this1.imag * rhs.imag, imag : this1.real * rhs.imag + this1.imag * rhs.real};
-};
-funkin_vis_dsp_Complex.conj = function(this1) {
-	return { real : this1.real, imag : -this1.imag};
-};
-funkin_vis_dsp_Complex.scale = function(this1,k) {
-	return { real : this1.real * k, imag : this1.imag * k};
-};
-funkin_vis_dsp_Complex.copy = function(this1) {
-	return { real : this1.real, imag : this1.imag};
-};
-funkin_vis_dsp_Complex.exp = function(w) {
-	return { real : Math.cos(w), imag : Math.sin(w)};
-};
-var funkin_vis_dsp_FFT = function() { };
-$hxClasses["funkin.vis.dsp.FFT"] = funkin_vis_dsp_FFT;
-funkin_vis_dsp_FFT.__name__ = "funkin.vis.dsp.FFT";
-funkin_vis_dsp_FFT.fft = function(input) {
-	return funkin_vis_dsp_FFT.do_fft(input,false);
-};
-funkin_vis_dsp_FFT.rfft = function(input) {
-	var f = funkin_vis_dsp_Complex.fromReal;
-	var result = new Array(input.length);
-	var _g = 0;
-	var _g1 = input.length;
-	while(_g < _g1) {
-		var i = _g++;
-		result[i] = f(input[i]);
-	}
-	var s = funkin_vis_dsp_FFT.fft(result);
-	return s.slice(0,(s.length / 2 | 0) + 1);
-};
-funkin_vis_dsp_FFT.ifft = function(input) {
-	return funkin_vis_dsp_FFT.do_fft(input,true);
-};
-funkin_vis_dsp_FFT.do_fft = function(input,inverse) {
-	var n = funkin_vis_dsp_FFT.nextPow2(input.length);
-	var _g = [];
-	var _g1 = 0;
-	var _g2 = n;
-	while(_g1 < _g2) {
-		var i = _g1++;
-		if(i < input.length) {
-			_g.push(input[i]);
-		} else {
-			_g.push(funkin_vis_dsp_Complex.zero);
-		}
-	}
-	var ts = _g;
-	var _g = [];
-	var _g1 = 0;
-	var _g2 = n;
-	while(_g1 < _g2) {
-		var _ = _g1++;
-		_g.push(funkin_vis_dsp_Complex.zero);
-	}
-	var fs = _g;
-	var tmp;
-	if(inverse) {
-		var tmp1 = funkin_vis_dsp_FFT.twiddleFactorsInversed;
-		tmp = (tmp1 != null ? tmp1.length : null) != n;
-	} else {
-		tmp = false;
-	}
-	if(tmp) {
-		funkin_vis_dsp_FFT.precomputeTwiddleFactors(n,true);
-	} else {
-		var tmp;
-		if(!inverse) {
-			var tmp1 = funkin_vis_dsp_FFT.twiddleFactors;
-			tmp = (tmp1 != null ? tmp1.length : null) != n;
-		} else {
-			tmp = false;
-		}
-		if(tmp) {
-			funkin_vis_dsp_FFT.precomputeTwiddleFactors(n,false);
-		}
-	}
-	funkin_vis_dsp_FFT.ditfft4(ts,0,fs,0,n,1,inverse);
-	if(inverse) {
-		var result = new Array(fs.length);
-		var _g = 0;
-		var _g1 = fs.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var z = fs[i];
-			var k = 1 / n;
-			result[i] = { real : z.real * k, imag : z.imag * k};
-		}
-		return result;
-	} else {
-		return fs;
-	}
-};
-funkin_vis_dsp_FFT.ditfft2 = function(time,t,freq,f,n,step,inverse) {
-	if(n == 1) {
-		var this1 = time[t];
-		freq[f] = { real : this1.real, imag : this1.imag};
-	} else {
-		var halfLen = n / 2 | 0;
-		funkin_vis_dsp_FFT.ditfft2(time,t,freq,f,halfLen,step * 2,inverse);
-		funkin_vis_dsp_FFT.ditfft2(time,t + step,freq,f + halfLen,halfLen,step * 2,inverse);
-		var _g = 0;
-		var _g1 = halfLen;
-		while(_g < _g1) {
-			var k = _g++;
-			var twiddle = inverse ? funkin_vis_dsp_FFT.twiddleFactorsInversed[k] : funkin_vis_dsp_FFT.twiddleFactors[k];
-			var this1 = freq[f + k];
-			var even_real = this1.real;
-			var even_imag = this1.imag;
-			var this2 = freq[f + k + halfLen];
-			var odd_real = this2.real;
-			var odd_imag = this2.imag;
-			var rhs_real = twiddle.real * odd_real - twiddle.imag * odd_imag;
-			var rhs_imag = twiddle.real * odd_imag + twiddle.imag * odd_real;
-			freq[f + k] = { real : even_real + rhs_real, imag : even_imag + rhs_imag};
-			var rhs_real1 = twiddle.real * odd_real - twiddle.imag * odd_imag;
-			var rhs_imag1 = twiddle.real * odd_imag + twiddle.imag * odd_real;
-			freq[f + k + halfLen] = { real : even_real - rhs_real1, imag : even_imag - rhs_imag1};
-		}
-	}
-};
-funkin_vis_dsp_FFT.ditfft4 = function(time,t,freq,f,n,step,inverse) {
-	if(n == 4) {
-		var _g = 0;
-		var _g1 = n;
-		while(_g < _g1) {
-			var k = _g++;
-			var sum = funkin_vis_dsp_Complex.zero;
-			var _g2 = 0;
-			while(_g2 < 4) {
-				var j = _g2++;
-				var w = (inverse ? 1 : -1) * 2 * Math.PI * k / n;
-				var twiddle_real = Math.cos(w);
-				var twiddle_imag = Math.sin(w);
-				var this1 = time[t + j * step];
-				var rhs_real = this1.real * twiddle_real - this1.imag * twiddle_imag;
-				var rhs_imag = this1.real * twiddle_imag + this1.imag * twiddle_real;
-				sum = { real : sum.real + rhs_real, imag : sum.imag + rhs_imag};
-			}
-			freq[f + k] = sum;
-		}
-	} else {
-		var quarterLen = n / 4 | 0;
-		funkin_vis_dsp_FFT.ditfft4(time,t,freq,f,quarterLen,step * 4,inverse);
-		funkin_vis_dsp_FFT.ditfft4(time,t + step,freq,f + quarterLen,quarterLen,step * 4,inverse);
-		funkin_vis_dsp_FFT.ditfft4(time,t + 2 * step,freq,f + 2 * quarterLen,quarterLen,step * 4,inverse);
-		funkin_vis_dsp_FFT.ditfft4(time,t + 3 * step,freq,f + 3 * quarterLen,quarterLen,step * 4,inverse);
-		var _g = 0;
-		var _g1 = quarterLen;
-		while(_g < _g1) {
-			var k = _g++;
-			var w = (inverse ? 1 : -1) * 2 * Math.PI * k / n;
-			var twiddle0_real = Math.cos(w);
-			var twiddle0_imag = Math.sin(w);
-			var w1 = (inverse ? 1 : -1) * 2 * Math.PI * k / n;
-			var twiddle1_real = Math.cos(w1);
-			var twiddle1_imag = Math.sin(w1);
-			var w2 = (inverse ? 1 : -1) * 2 * Math.PI * k * 2 / n;
-			var twiddle2_real = Math.cos(w2);
-			var twiddle2_imag = Math.sin(w2);
-			var w3 = (inverse ? 1 : -1) * 2 * Math.PI * k * 3 / n;
-			var twiddle3_real = Math.cos(w3);
-			var twiddle3_imag = Math.sin(w3);
-			var this1 = freq[f + k];
-			var f0_real = this1.real;
-			var f0_imag = this1.imag;
-			var this2 = freq[f + k + quarterLen];
-			var this_real = this2.real;
-			var this_imag = this2.imag;
-			var f1_real = this_real * twiddle1_real - this_imag * twiddle1_imag;
-			var f1_imag = this_real * twiddle1_imag + this_imag * twiddle1_real;
-			var this3 = freq[f + k + 2 * quarterLen];
-			var this_real1 = this3.real;
-			var this_imag1 = this3.imag;
-			var f2_real = this_real1 * twiddle2_real - this_imag1 * twiddle2_imag;
-			var f2_imag = this_real1 * twiddle2_imag + this_imag1 * twiddle2_real;
-			var this4 = freq[f + k + 3 * quarterLen];
-			var this_real2 = this4.real;
-			var this_imag2 = this4.imag;
-			var f3_real = this_real2 * twiddle3_real - this_imag2 * twiddle3_imag;
-			var f3_imag = this_real2 * twiddle3_imag + this_imag2 * twiddle3_real;
-			var this_real3 = f0_real + f1_real;
-			var this_imag3 = f0_imag + f1_imag;
-			var this_real4 = this_real3 + f2_real;
-			var this_imag4 = this_imag3 + f2_imag;
-			freq[f + k] = { real : this_real4 + f3_real, imag : this_imag4 + f3_imag};
-			var this_real5 = f0_real + f1_real;
-			var this_imag5 = f0_imag + f1_imag;
-			var this_real6 = this_real5 - f2_real;
-			var this_imag6 = this_imag5 - f2_imag;
-			freq[f + k + quarterLen] = { real : this_real6 - f3_real, imag : this_imag6 - f3_imag};
-			var this_real7 = f0_real - f1_real;
-			var this_imag7 = f0_imag - f1_imag;
-			var this_real8 = this_real7 - f2_real;
-			var this_imag8 = this_imag7 - f2_imag;
-			freq[f + k + 2 * quarterLen] = { real : this_real8 + f3_real, imag : this_imag8 + f3_imag};
-			var this_real9 = f0_real - f1_real;
-			var this_imag9 = f0_imag - f1_imag;
-			var this_real10 = this_real9 + f2_real;
-			var this_imag10 = this_imag9 + f2_imag;
-			freq[f + k + 3 * quarterLen] = { real : this_real10 - f3_real, imag : this_imag10 - f3_imag};
-		}
-	}
-};
-funkin_vis_dsp_FFT.dft = function(ts,inverse) {
-	if(inverse == null) {
-		inverse = false;
-	}
-	var n = ts.length;
-	var fs = [];
-	fs.length = n;
-	var _g = 0;
-	var _g1 = n;
-	while(_g < _g1) {
-		var f = _g++;
-		var sum = funkin_vis_dsp_Complex.zero;
-		var _g2 = 0;
-		var _g3 = n;
-		while(_g2 < _g3) {
-			var t = _g2++;
-			var this1 = ts[t];
-			var w = (inverse ? 1 : -1) * 2 * Math.PI * f * t / n;
-			var rhs_real = Math.cos(w);
-			var rhs_imag = Math.sin(w);
-			var rhs_real1 = this1.real * rhs_real - this1.imag * rhs_imag;
-			var rhs_imag1 = this1.real * rhs_imag + this1.imag * rhs_real;
-			sum = { real : sum.real + rhs_real1, imag : sum.imag + rhs_imag1};
-		}
-		var tmp;
-		if(inverse) {
-			var k = 1 / n;
-			tmp = { real : sum.real * k, imag : sum.imag * k};
-		} else {
-			tmp = sum;
-		}
-		fs[f] = tmp;
-	}
-	return fs;
-};
-funkin_vis_dsp_FFT.twiddleFactorsInversed = null;
-funkin_vis_dsp_FFT.twiddleFactors = null;
-funkin_vis_dsp_FFT.precomputeTwiddleFactors = function(maxN,inverse) {
-	var n = maxN;
-	var base_len = maxN;
-	var len = base_len * 4;
-	var twiddles = [];
-	var _g = 0;
-	var _g1 = n / 2 | 0;
-	while(_g < _g1) {
-		var k = _g++;
-		var twiddle = funkin_vis_dsp_FFT.computeTwiddle(k,n,inverse);
-		twiddles.push(twiddle);
-	}
-	if(inverse) {
-		funkin_vis_dsp_FFT.twiddleFactorsInversed = twiddles;
-	} else {
-		funkin_vis_dsp_FFT.twiddleFactors = twiddles;
-	}
-};
-funkin_vis_dsp_FFT.computeTwiddle = function(index,fft_len,inverse) {
-	if(inverse == null) {
-		inverse = false;
-	}
-	var constant = -2 * Math.PI / fft_len;
-	var angle = constant * index;
-	var result = { real : Math.cos(angle), imag : Math.sin(angle)};
-	if(inverse) {
-		return { real : result.real, imag : -result.imag};
-	} else {
-		return result;
-	}
-};
-funkin_vis_dsp_FFT.useTwiddleFactor = function(n,k,inverse) {
-	if(inverse == null) {
-		inverse = false;
-	}
-	var twiddlesToUse = inverse ? funkin_vis_dsp_FFT.twiddleFactorsInversed : funkin_vis_dsp_FFT.twiddleFactors;
-	return twiddlesToUse[k];
-};
-funkin_vis_dsp_FFT.nextPow2 = function(x) {
-	if(x < 2) {
-		return 1;
-	} else if((x & x - 1) == 0) {
-		return x;
-	}
-	var pow = 2;
-	--x;
-	while((x >>= 1) != 0) pow <<= 1;
-	return pow;
-};
-funkin_vis_dsp_FFT.main = function() {
-	var Fs = 44100.0;
-	var N = 512;
-	var halfN = N / 2 | 0;
-	var freqs = [5919.911];
-	var _g = [];
-	var _g1 = 0;
-	var _g2 = N;
-	while(_g1 < _g2) {
-		var n = _g1++;
-		var result = new Array(freqs.length);
-		var _g3 = 0;
-		var _g4 = freqs.length;
-		while(_g3 < _g4) {
-			var i = _g3++;
-			result[i] = Math.sin(2 * Math.PI * freqs[i] * n / Fs);
-		}
-		_g.push(funkin_vis_dsp_Signal.sum(result));
-	}
-	var ts = _g;
-	var fs_pos = funkin_vis_dsp_FFT.rfft(ts);
-	var _g = [];
-	var _g1 = -(halfN - 1);
-	var _g2 = 0;
-	while(_g1 < _g2) {
-		var k = _g1++;
-		var this1 = fs_pos[-k];
-		_g.push({ real : this1.real, imag : -this1.imag});
-	}
-	var fs_fft_array = _g.concat(fs_pos);
-	var fs_fft_offset = -(halfN - 1);
-	var f = funkin_vis_dsp_Complex.fromReal;
-	var result = new Array(ts.length);
-	var _g = 0;
-	var _g1 = ts.length;
-	while(_g < _g1) {
-		var i = _g++;
-		result[i] = f(ts[i]);
-	}
-	var fs_dft_array = funkin_vis_dsp_OffsetArray.circShift(funkin_vis_dsp_FFT.dft(result),halfN - 1);
-	var fs_dft_offset = -(halfN - 1);
-	var _g = [];
-	var _g1 = -(halfN - 1);
-	var _g2 = halfN;
-	while(_g1 < _g2) {
-		var k = _g1++;
-		var this1 = fs_fft_array[k - fs_fft_offset];
-		var rhs = fs_dft_array[k - fs_dft_offset];
-		_g.push({ real : this1.real - rhs.real, imag : this1.imag - rhs.imag});
-	}
-	var fs_err = _g;
-	var result = new Array(fs_err.length);
-	var _g = 0;
-	var _g1 = fs_err.length;
-	while(_g < _g1) {
-		var i = _g++;
-		var z = fs_err[i];
-		result[i] = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	}
-	var max_fs_err = funkin_vis_dsp_Signal.max(result);
-	if(max_fs_err > 1e-6) {
-		haxe_Log.trace("FT Error: " + max_fs_err,null);
-	}
-	var _this = fs_fft_array;
-	var result = new Array(_this.length);
-	var _g = 0;
-	var _g1 = _this.length;
-	while(_g < _g1) {
-		var i = _g++;
-		var z = _this[i];
-		result[i] = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	}
-	var _this = funkin_vis_dsp_Signal.findPeaks(result);
-	var result = new Array(_this.length);
-	var _g = 0;
-	var _g1 = _this.length;
-	while(_g < _g1) {
-		var i = _g++;
-		result[i] = (_this[i] - (halfN - 1)) * Fs / N;
-	}
-	var _g = [];
-	var _g1 = 0;
-	var _g2 = result;
-	while(_g1 < _g2.length) {
-		var v = _g2[_g1];
-		++_g1;
-		if(v >= 0) {
-			_g.push(v);
-		}
-	}
-	var freqis = _g;
-	if(freqis.length != freqs.length) {
-		haxe_Log.trace("Found frequencies: " + Std.string(freqis),{ fileName : "funkin/vis/dsp/FFT.hx", lineNumber : 233, className : "funkin.vis.dsp.FFT", methodName : "main"});
-	} else {
-		var _g = [];
-		var _g1 = 0;
-		var _g2 = freqs.length;
-		while(_g1 < _g2) {
-			var i = _g1++;
-			_g.push(freqis[i] - freqs[i]);
-		}
-		var freqs_err = _g;
-		var f = Math.abs;
-		var result = new Array(freqs_err.length);
-		var _g = 0;
-		var _g1 = freqs_err.length;
-		while(_g < _g1) {
-			var i = _g++;
-			result[i] = f(freqs_err[i]);
-		}
-		var max_freqs_err = funkin_vis_dsp_Signal.max(result);
-		if(max_freqs_err > Fs / N) {
-			haxe_Log.trace("Frequency Errors: " + Std.string(freqs_err),{ fileName : "funkin/vis/dsp/FFT.hx", lineNumber : 237, className : "funkin.vis.dsp.FFT", methodName : "main"});
-		}
-	}
-	var _this = funkin_vis_dsp_OffsetArray.circShift(fs_fft_array,-(halfN - 1));
-	var result = new Array(_this.length);
-	var _g = 0;
-	var _g1 = _this.length;
-	while(_g < _g1) {
-		var i = _g++;
-		var z = _this[i];
-		var k = 1 / Fs;
-		result[i] = { real : z.real * k, imag : z.imag * k};
-	}
-	var ts_ifft = funkin_vis_dsp_FFT.ifft(result);
-	var _g = [];
-	var _g1 = 0;
-	var _g2 = N;
-	while(_g1 < _g2) {
-		var n = _g1++;
-		var this1 = ts_ifft[n];
-		var this_real = this1.real * Fs;
-		var this_imag = this1.imag * Fs;
-		_g.push(this_real - ts[n]);
-	}
-	var ts_err = _g;
-	var f = Math.abs;
-	var result = new Array(ts_err.length);
-	var _g = 0;
-	var _g1 = ts_err.length;
-	while(_g < _g1) {
-		var i = _g++;
-		result[i] = f(ts_err[i]);
-	}
-	var max_ts_err = funkin_vis_dsp_Signal.max(result);
-	if(max_ts_err > 1e-6) {
-		haxe_Log.trace("IFT Error: " + max_ts_err,null);
-	}
-};
-var funkin_vis_dsp_OffsetArray = {};
-funkin_vis_dsp_OffsetArray.__properties__ = {get_length:"get_length"};
-funkin_vis_dsp_OffsetArray._new = function(array,offset) {
-	return { array : array, offset : offset};
-};
-funkin_vis_dsp_OffsetArray.get_length = function(this1) {
-	return this1.array.length;
-};
-funkin_vis_dsp_OffsetArray.get = function(this1,index) {
-	return this1.array[index - this1.offset];
-};
-funkin_vis_dsp_OffsetArray.set = function(this1,index,value) {
-	this1.array[index - this1.offset] = value;
-};
-funkin_vis_dsp_OffsetArray.keyValueIterator = function(this1) {
-	return new funkin_vis_dsp__$OffsetArray_OffsetArrayIterator(this1.array,this1.offset);
-};
-funkin_vis_dsp_OffsetArray.fromArray = function(array) {
-	return { array : array, offset : 0};
-};
-funkin_vis_dsp_OffsetArray.toArray = function(this1) {
-	return this1.array;
-};
-funkin_vis_dsp_OffsetArray.circShift = function(array,n) {
-	if(n < 0) {
-		return funkin_vis_dsp_OffsetArray.circShift(array,array.length + n);
-	}
-	var shifted = [];
-	n %= array.length;
-	var _g = array.length - n;
-	var _g1 = array.length;
-	while(_g < _g1) {
-		var i = _g++;
-		shifted.push(array[i]);
-	}
-	var _g = 0;
-	var _g1 = array.length - n;
-	while(_g < _g1) {
-		var i = _g++;
-		shifted.push(array[i]);
-	}
-	return shifted;
-};
-var funkin_vis_dsp__$OffsetArray_OffsetArrayIterator = function(array,offset) {
-	this.array = array;
-	this.offset = offset;
-	this.enumeration = 0;
-};
-$hxClasses["funkin.vis.dsp._OffsetArray.OffsetArrayIterator"] = funkin_vis_dsp__$OffsetArray_OffsetArrayIterator;
-funkin_vis_dsp__$OffsetArray_OffsetArrayIterator.__name__ = "funkin.vis.dsp._OffsetArray.OffsetArrayIterator";
-funkin_vis_dsp__$OffsetArray_OffsetArrayIterator.prototype = {
-	array: null
-	,offset: null
-	,enumeration: null
-	,next: function() {
-		var i = this.enumeration++;
-		return { key : i + this.offset, value : this.array[i]};
-	}
-	,hasNext: function() {
-		return this.enumeration < this.array.length;
-	}
-	,__class__: funkin_vis_dsp__$OffsetArray_OffsetArrayIterator
-};
-var funkin_vis_dsp_RecentPeakFinder = function(length) {
-	if(length == null) {
-		length = 30;
-	}
-	this.peak = 0;
-	this.bufferIndex = 0;
-	this.buffer = [];
-	this.buffer.length = length;
-};
-$hxClasses["funkin.vis.dsp.RecentPeakFinder"] = funkin_vis_dsp_RecentPeakFinder;
-funkin_vis_dsp_RecentPeakFinder.__name__ = "funkin.vis.dsp.RecentPeakFinder";
-funkin_vis_dsp_RecentPeakFinder.prototype = {
-	buffer: null
-	,bufferIndex: null
-	,peak: null
-	,push: function(value) {
-		this.buffer[this.bufferIndex] = value;
-		if(value > this.peak) {
-			this.peak = value;
-		} else {
-			this.peak = funkin_vis_dsp_Signal.max(this.buffer);
-		}
-		this.bufferIndex = this.bufferIndex + 1 == this.buffer.length ? 0 : this.bufferIndex + 1;
-	}
-	,get_lastValue: function() {
-		if(this.bufferIndex == 0) {
-			return this.buffer[this.buffer.length - 1];
-		} else {
-			return this.buffer[this.bufferIndex - 1];
-		}
-	}
-	,__class__: funkin_vis_dsp_RecentPeakFinder
-	,__properties__: {get_lastValue:"get_lastValue"}
-};
-var funkin_vis_dsp_Signal = function() { };
-$hxClasses["funkin.vis.dsp.Signal"] = funkin_vis_dsp_Signal;
-funkin_vis_dsp_Signal.__name__ = "funkin.vis.dsp.Signal";
-funkin_vis_dsp_Signal.smooth = function(y,n) {
-	if(n <= 0) {
-		return null;
-	} else if(n == 1) {
-		return y.slice();
-	} else {
-		var smoothed = [];
-		smoothed.length = y.length;
-		var _g = 0;
-		var _g1 = y.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var m = i + 1 < n ? i : n - 1;
-			smoothed[i] = funkin_vis_dsp_Signal.sum(y.slice(i - m,i + 1));
-		}
-		return smoothed;
-	}
-};
-funkin_vis_dsp_Signal.findPeaks = function(y,threshold,minHeight) {
-	threshold = threshold == null ? 0.0 : Math.abs(threshold);
-	if(minHeight == null) {
-		minHeight = funkin_vis_dsp_Signal.min(y);
-	}
-	var peaks = [];
-	var _g = [];
-	var _g1 = 1;
-	var _g2 = y.length;
-	while(_g1 < _g2) {
-		var i = _g1++;
-		_g.push(y[i] - y[i - 1]);
-	}
-	var dy = _g;
-	var _g = 1;
-	var _g1 = dy.length;
-	while(_g < _g1) {
-		var i = _g++;
-		if(dy[i - 1] > threshold && dy[i] < -threshold && y[i] > minHeight) {
-			peaks.push(i);
-		}
-	}
-	return peaks;
-};
-funkin_vis_dsp_Signal.sum = function(array) {
-	var sum = 0.0;
-	var c = 0.0;
-	var _g = 0;
-	while(_g < array.length) {
-		var v = array[_g];
-		++_g;
-		var t = sum + v;
-		c += Math.abs(sum) >= Math.abs(v) ? sum - t + v : v - t + sum;
-		sum = t;
-	}
-	return sum + c;
-};
-funkin_vis_dsp_Signal.mean = function(y) {
-	return funkin_vis_dsp_Signal.sum(y) / y.length;
-};
-funkin_vis_dsp_Signal.max = function(y) {
-	return Lambda.fold(y,Math.max,y[0]);
-};
-funkin_vis_dsp_Signal.maxi = function(y) {
-	return Lambda.foldi(y,function(yi,m,i) {
-		if(yi > y[m]) {
-			return i;
-		} else {
-			return m;
-		}
-	},0);
-};
-funkin_vis_dsp_Signal.min = function(y) {
-	return Lambda.fold(y,Math.min,y[0]);
-};
-funkin_vis_dsp_Signal.mini = function(y) {
-	return Lambda.foldi(y,function(yi,m,i) {
-		if(yi < y[m]) {
-			return i;
-		} else {
-			return m;
-		}
-	},0);
-};
-var funkin_vis_dsp_MathType = $hxEnums["funkin.vis.dsp.MathType"] = { __ename__:"funkin.vis.dsp.MathType",__constructs__:null
-	,Round: {_hx_name:"Round",_hx_index:0,__enum__:"funkin.vis.dsp.MathType",toString:$estr}
-	,Floor: {_hx_name:"Floor",_hx_index:1,__enum__:"funkin.vis.dsp.MathType",toString:$estr}
-	,Ceil: {_hx_name:"Ceil",_hx_index:2,__enum__:"funkin.vis.dsp.MathType",toString:$estr}
-	,Cast: {_hx_name:"Cast",_hx_index:3,__enum__:"funkin.vis.dsp.MathType",toString:$estr}
-};
-funkin_vis_dsp_MathType.__constructs__ = [funkin_vis_dsp_MathType.Round,funkin_vis_dsp_MathType.Floor,funkin_vis_dsp_MathType.Ceil,funkin_vis_dsp_MathType.Cast];
-var funkin_vis_dsp_SpectralAnalyzer = function(audioSource,barCount,smoothingTimeConstant,peakHold) {
-	if(peakHold == null) {
-		peakHold = 30;
-	}
-	if(smoothingTimeConstant == null) {
-		smoothingTimeConstant = 0.8;
-	}
-	this._buffer = [];
-	this.bars = [];
-	this.fftN2 = 2048;
-	this.maxFreq = 22000;
-	this.minFreq = 50;
-	this.fftN = 4096;
-	this.maxDb = -20;
-	this.minDb = -70;
-	this.audioSource = audioSource;
-	this.audioClip = new funkin_vis_audioclip_frontends_LimeAudioClip(audioSource);
-	this.barCount = barCount;
-	this.smoothingTimeConstant = smoothingTimeConstant;
-	this.peakHold = peakHold;
-	this.htmlAnalyzer = new funkin_vis__$internal_html5_AnalyzerNode(this.audioClip);
-	this.calcBars(barCount,peakHold);
-};
-$hxClasses["funkin.vis.dsp.SpectralAnalyzer"] = funkin_vis_dsp_SpectralAnalyzer;
-funkin_vis_dsp_SpectralAnalyzer.__name__ = "funkin.vis.dsp.SpectralAnalyzer";
-funkin_vis_dsp_SpectralAnalyzer.clamp_Float = function(val,min,max) {
-	if(val <= min) {
-		return min;
-	} else if(val >= max) {
-		return max;
-	} else {
-		return val;
-	}
-};
-funkin_vis_dsp_SpectralAnalyzer.prototype = {
-	minDb: null
-	,maxDb: null
-	,fftN: null
-	,minFreq: null
-	,maxFreq: null
-	,audioSource: null
-	,audioClip: null
-	,barCount: null
-	,smoothingTimeConstant: null
-	,peakHold: null
-	,fftN2: null
-	,htmlAnalyzer: null
-	,bars: null
-	,freqToBin: function(freq,mathType) {
-		if(mathType == null) {
-			mathType = funkin_vis_dsp_MathType.Round;
-		}
-		var bin = freq * this.fftN2 / this.audioClip.audioBuffer.sampleRate;
-		switch(mathType._hx_index) {
-		case 0:
-			return Math.round(bin);
-		case 1:
-			return Math.floor(bin);
-		case 2:
-			return Math.ceil(bin);
-		case 3:
-			return bin | 0;
-		}
-	}
-	,normalizedB: function(value) {
-		var maxValue = this.maxDb;
-		var minValue = this.minDb;
-		var val = (value - minValue) / (maxValue - minValue);
-		if(val <= 0) {
-			return 0;
-		} else if(val >= 1) {
-			return 1;
-		} else {
-			return val;
-		}
-	}
-	,calcBars: function(barCount,peakHold) {
-		this.bars = [];
-		var logStep = (funkin_vis_LogHelper.log10(this.maxFreq) - funkin_vis_LogHelper.log10(this.minFreq)) / barCount;
-		var scaleMin = funkin_vis_LogHelper.log10(1 + this.minFreq / 1000);
-		var scaleMax = funkin_vis_LogHelper.log10(1 + this.maxFreq / 1000);
-		var curScale = scaleMin;
-		var _g = 0;
-		var _g1 = barCount;
-		while(_g < _g1) {
-			var i = _g++;
-			var curFreq = Math.pow(10,funkin_vis_LogHelper.log10(this.minFreq) + logStep * i);
-			var freqLo = curFreq;
-			var freqHi = Math.pow(10,funkin_vis_LogHelper.log10(this.minFreq) + logStep * (i + 1));
-			var binLo = this.freqToBin(freqLo,funkin_vis_dsp_MathType.Floor);
-			var binHi = this.freqToBin(freqHi);
-			this.bars.push({ binLo : binLo, binHi : binHi, freqLo : freqLo, freqHi : freqHi, recentValues : new funkin_vis_dsp_RecentPeakFinder(peakHold)});
-		}
-		if(this.bars[0].freqLo < this.minFreq) {
-			this.bars[0].freqLo = this.minFreq;
-			this.bars[0].binLo = this.freqToBin(this.minFreq,funkin_vis_dsp_MathType.Floor);
-		}
-		if(this.bars[this.bars.length - 1].freqHi > this.maxFreq) {
-			this.bars[this.bars.length - 1].freqHi = this.maxFreq;
-			this.bars[this.bars.length - 1].binHi = this.freqToBin(this.maxFreq,funkin_vis_dsp_MathType.Floor);
-		}
-	}
-	,getLevels: function(levels) {
-		if(levels == null) {
-			levels = [];
-		}
-		var amplitudes = this.htmlAnalyzer.getFloatFrequencyData();
-		var _g = 0;
-		var _g1 = this.bars.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var bar = this.bars[i];
-			var binLo = bar.binLo;
-			var binHi = bar.binHi;
-			var value = this.minDb;
-			var _g2 = binLo + 1;
-			var _g3 = binHi;
-			while(_g2 < _g3) {
-				var j = _g2++;
-				value = Math.max(value,amplitudes[j | 0]);
-			}
-			value = this.normalizedB(value);
-			bar.recentValues.push(value);
-			var recentPeak = bar.recentValues.peak;
-			if(levels[i] != null) {
-				levels[i].value = value;
-				levels[i].peak = recentPeak;
-			} else {
-				levels.push({ value : value, peak : recentPeak});
-			}
-		}
-		return levels;
-	}
-	,_buffer: null
-	,getSignal: function(data,bitsPerSample) {
-		switch(bitsPerSample) {
-		case 8:
-			this._buffer.length = data.length;
-			var _g = 0;
-			var _g1 = data.length;
-			while(_g < _g1) {
-				var i = _g++;
-				this._buffer[i] = UInt.toFloat(data[i]) / 128.0;
-			}
-			break;
-		case 16:
-			this._buffer.length = data.length / 2 | 0;
-			var _g = 0;
-			var _g1 = this._buffer.length;
-			while(_g < _g1) {
-				var i = _g++;
-				var pos = i * 2;
-				var val = data[pos] | data[pos + 1] << 8;
-				this._buffer[i] = ((val & 32768) != 0 ? val - 65536 : val) / 32767.0;
-			}
-			break;
-		case 24:
-			this._buffer.length = data.length / 3 | 0;
-			var _g = 0;
-			var _g1 = this._buffer.length;
-			while(_g < _g1) {
-				var i = _g++;
-				var pos = i * 3;
-				var val = data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16;
-				this._buffer[i] = ((val & 8388608) != 0 ? val - 16777216 : val) / 8388607.0;
-			}
-			break;
-		case 32:
-			this._buffer.length = data.length / 4 | 0;
-			var _g = 0;
-			var _g1 = this._buffer.length;
-			while(_g < _g1) {
-				var i = _g++;
-				var pos = i * 4;
-				this._buffer[i] = (data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16 | data[pos + 3] << 24) / 2147483647.0;
-			}
-			break;
-		default:
-			haxe_Log.trace("Unknown integer audio format",{ fileName : "funkin/vis/dsp/SpectralAnalyzer.hx", lineNumber : 293, className : "funkin.vis.dsp.SpectralAnalyzer", methodName : "getSignal"});
-		}
-		return this._buffer;
-	}
-	,set_minDb: function(value) {
-		this.minDb = value;
-		this.htmlAnalyzer.minDecibels = value;
-		return value;
-	}
-	,set_maxDb: function(value) {
-		this.maxDb = value;
-		this.htmlAnalyzer.maxDecibels = value;
-		return value;
-	}
-	,set_fftN: function(value) {
-		this.fftN = value;
-		var pow2 = funkin_vis_dsp_FFT.nextPow2(value);
-		this.fftN2 = pow2 / 2 | 0;
-		this.htmlAnalyzer.fftSize = pow2;
-		this.calcBars(this.barCount,this.peakHold);
-		return pow2;
-	}
-	,__class__: funkin_vis_dsp_SpectralAnalyzer
-	,__properties__: {set_fftN:"set_fftN",set_maxDb:"set_maxDb",set_minDb:"set_minDb"}
-};
-var grig_audio_Complex = {};
-grig_audio_Complex.__properties__ = {set_imag:"set_imag",get_imag:"get_imag",set_real:"set_real",get_real:"get_real"};
-grig_audio_Complex.get_real = function(this1) {
-	return this1.real;
-};
-grig_audio_Complex.set_real = function(this1,n) {
-	return this1.real = n;
-};
-grig_audio_Complex.get_imag = function(this1) {
-	return this1.imag;
-};
-grig_audio_Complex.set_imag = function(this1,n) {
-	return this1.imag = n;
-};
-grig_audio_Complex._new = function(real,imag) {
-	return { real : real, imag : imag};
-};
-grig_audio_Complex.toString = function(this1) {
-	return "(" + this1.real + "," + this1.imag + ")";
-};
-grig_audio_Complex.sum = function(this1,z) {
-	return { real : this1.real + z.real, imag : this1.imag + z.imag};
-};
-grig_audio_Complex.sumWithFloat = function(this1,x) {
-	return { real : this1.real + x, imag : this1.imag};
-};
-grig_audio_Complex.subWithFloat = function(this1,x) {
-	return { real : this1.real + -x, imag : this1.imag};
-};
-grig_audio_Complex.sub = function(this1,z) {
-	return { real : this1.real - z.real, imag : this1.imag - z.imag};
-};
-grig_audio_Complex.mul = function(this1,z) {
-	return { real : this1.real * z.real - this1.imag * z.imag, imag : this1.real * z.imag + this1.imag * z.real};
-};
-grig_audio_Complex.mulWithFloat = function(this1,x) {
-	return { real : this1.real * x, imag : this1.imag * x};
-};
-grig_audio_Complex.div = function(this1,z) {
-	var d = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	return { real : (this1.real * z.real + this1.imag * z.imag) / d, imag : (this1.imag * z.real - this1.real * z.imag) / d};
-};
-grig_audio_Complex.divWithFloat = function(this1,x) {
-	haxe_Log.trace(x,{ fileName : "grig/audio/Complex.hx", lineNumber : 93, className : "grig.audio._Complex.Complex_Impl_", methodName : "divWithFloat", customParams : [this1.real * x,this1.imag * x]});
-	var x1 = 1 / x;
-	return { real : this1.real * x1, imag : this1.imag * x1};
-};
-grig_audio_Complex.sumAsn = function(this1,z) {
-	this1 = { real : this1.real + z.real, imag : this1.imag + z.imag};
-	return this1;
-};
-grig_audio_Complex.sumWithFloatAsm = function(this1,x) {
-	this1 = { real : this1.real + x, imag : this1.imag};
-	return this1;
-};
-grig_audio_Complex.subAsn = function(this1,z) {
-	this1 = { real : this1.real - z.real, imag : this1.imag - z.imag};
-	return this1;
-};
-grig_audio_Complex.subWithFloatAsn = function(this1,x) {
-	this1 = { real : this1.real + -x, imag : this1.imag};
-	return this1;
-};
-grig_audio_Complex.mulAsn = function(this1,z) {
-	this1 = { real : this1.real * z.real - this1.imag * z.imag, imag : this1.real * z.imag + this1.imag * z.real};
-	return this1;
-};
-grig_audio_Complex.mulWithFloatAsn = function(this1,x) {
-	this1 = { real : this1.real * x, imag : this1.imag * x};
-	return this1;
-};
-grig_audio_Complex.divAsn = function(this1,z) {
-	var d = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	this1 = { real : (this1.real * z.real + this1.imag * z.imag) / d, imag : (this1.imag * z.real - this1.real * z.imag) / d};
-	return this1;
-};
-grig_audio_Complex.divWithFloatAsn = function(this1,x) {
-	haxe_Log.trace(x,{ fileName : "grig/audio/Complex.hx", lineNumber : 93, className : "grig.audio._Complex.Complex_Impl_", methodName : "divWithFloat", customParams : [this1.real * x,this1.imag * x]});
-	var x1 = 1 / x;
-	this1 = { real : this1.real * x1, imag : this1.imag * x1};
-	return this1;
-};
-grig_audio_Complex.equals = function(this1,z) {
-	if(this1.real == z.real) {
-		return this1.imag == z.imag;
-	} else {
-		return false;
-	}
-};
-grig_audio_Complex.fromPolar = function(norm,phi) {
-	return { real : norm * Math.cos(phi), imag : norm * Math.sin(phi)};
-};
-grig_audio_Complex.abs = function(z) {
-	return Math.sqrt(z.real * z.real + z.imag * z.imag);
-};
-grig_audio_Complex.norm = function(z) {
-	return z.real * z.real + z.imag * z.imag;
-};
-grig_audio_Complex.arg = function(z) {
-	return Math.atan2(z.imag,z.real);
-};
-grig_audio_Complex.sqrt = function(z) {
-	var m = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	var a = Math.atan2(z.imag,z.real) / 2.0;
-	return { real : m * Math.cos(a), imag : m * Math.sin(a)};
-};
-grig_audio_Complex.exp = function(z) {
-	var m = Math.exp(z.real);
-	var phi = z.imag;
-	return { real : m * Math.cos(phi), imag : m * Math.sin(phi)};
-};
-grig_audio_Complex.conj = function(z) {
-	return { real : z.real, imag : -z.imag};
-};
-grig_audio_Complex.pow = function(base,exponent) {
-	var m = Math.sqrt(base.real * base.real + base.imag * base.imag);
-	var a = Math.atan2(base.imag,base.real);
-	var nM = Math.pow(m,exponent);
-	var nA = a * exponent;
-	return { real : nM * Math.cos(nA), imag : nM * Math.sin(nA)};
-};
-grig_audio_Complex.log = function(z) {
-	var m = Math.sqrt(z.real * z.real + z.imag * z.imag);
-	var a = Math.atan2(z.imag,z.real);
-	if(m > 0) {
-		return { real : Math.log(m), imag : a};
-	} else {
-		return { real : NaN, imag : NaN};
-	}
-};
-var grig_audio_FFT = function(n) {
-	if(n == null) {
-		n = 512;
-	}
-	this.roots = [];
-	this.reversed = [];
-	this.hamming = [];
-	this.hamming.length = n;
-	this.reversed.length = n;
-	this.roots.length = n / 2 | 0;
-	this.n = n;
-	this.logN = grig_audio_FFT.log(2.0,n) | 0;
-	this.generateTables();
-};
-$hxClasses["grig.audio.FFT"] = grig_audio_FFT;
-grig_audio_FFT.__name__ = "grig.audio.FFT";
-grig_audio_FFT.clamp_Int = function(value,lower,upper) {
-	if(value < lower) {
-		return lower;
-	} else if(value > upper) {
-		return upper;
-	} else {
-		return value;
-	}
-};
-grig_audio_FFT.log = function(base,x) {
-	return Math.log(x) / Math.log(base);
-};
-grig_audio_FFT.prototype = {
-	hamming: null
-	,reversed: null
-	,roots: null
-	,n: null
-	,logN: null
-	,bitReverse: function(x) {
-		var y = 0;
-		var i = this.logN;
-		while(i > 0) {
-			y = y << 1 | x & 1;
-			x >>= 1;
-			--i;
-		}
-		return y;
-	}
-	,generateTables: function() {
-		var _g = 0;
-		var _g1 = this.n;
-		while(_g < _g1) {
-			var i = _g++;
-			this.hamming[i] = 1 - 0.85 * Math.cos(i * (grig_audio_FFT.TWO_PI / this.n));
-		}
-		var _g = 0;
-		var _g1 = this.reversed.length;
-		while(_g < _g1) {
-			var i = _g++;
-			this.reversed[i] = this.bitReverse(i);
-		}
-		var _g = 0;
-		var _g1 = this.n / 2 | 0;
-		while(_g < _g1) {
-			var i = _g++;
-			var z = { real : 0, imag : i * (grig_audio_FFT.TWO_PI / this.n)};
-			var m = Math.exp(z.real);
-			var phi = z.imag;
-			this.roots[i] = { real : m * Math.cos(phi), imag : m * Math.sin(phi)};
-		}
-	}
-	,doFFT: function(a) {
-		var half = 1;
-		var inv = a.length / 2 | 0;
-		while(inv > 0) {
-			var g = 0;
-			while(g < a.length) {
-				var b = 0;
-				var r = 0;
-				while(b < half) {
-					var even = a[g + b];
-					var this1 = this.roots[r];
-					var z = a[g + half + b];
-					var odd_real = this1.real * z.real - this1.imag * z.imag;
-					var odd_imag = this1.real * z.imag + this1.imag * z.real;
-					a[g + b] = { real : even.real + odd_real, imag : even.imag + odd_imag};
-					a[g + half + b] = { real : even.real - odd_real, imag : even.imag - odd_imag};
-					++b;
-					r += inv;
-				}
-				g += half << 1;
-			}
-			half <<= 1;
-			inv >>= 1;
-		}
-	}
-	,calcFreq: function(data) {
-		var a = [];
-		var freq = [];
-		a.length = this.n;
-		freq.length = this.n / 2 | 0;
-		var _g = 0;
-		var _g1 = a.length;
-		while(_g < _g1) {
-			var i = _g++;
-			a[this.reversed[i]] = { real : data[i] * this.hamming[i], imag : 0.0};
-		}
-		this.doFFT(a);
-		var _g = 0;
-		var _g1 = this.n / 2 | 0;
-		while(_g < _g1) {
-			var i = _g++;
-			var z = a[1 + i];
-			freq[i] = 2 * Math.sqrt(z.real * z.real + z.imag * z.imag) / this.n;
-		}
-		var z = a[this.n / 2 | 0];
-		freq[(this.n / 2 | 0) - 1] = Math.sqrt(z.real * z.real + z.imag * z.imag) / this.n;
-		return freq;
-	}
-	,__class__: grig_audio_FFT
-};
-var grig_audio_FFTVisualization = function() {
-	this.xscale = [];
-};
-$hxClasses["grig.audio.FFTVisualization"] = grig_audio_FFTVisualization;
-grig_audio_FFTVisualization.__name__ = "grig.audio.FFTVisualization";
-grig_audio_FFTVisualization.computeLogXScale = function(bands) {
-	var xscale = [];
-	xscale.length = bands + 1;
-	xscale[bands] = 0.0;
-	var _g = 0;
-	var _g1 = bands;
-	while(_g < _g1) {
-		var i = _g++;
-		xscale[i] = Math.pow(256,i / bands) - 0.5;
-	}
-	return xscale;
-};
-grig_audio_FFTVisualization.computeFreqBand = function(freq,xscale,band,bands) {
-	var a = Math.ceil(xscale[band]);
-	var b = Math.floor(xscale[band + 1]);
-	var n = 0.0;
-	if(b < a) {
-		n += freq[b] * (xscale[band + 1] - xscale[band]);
-	} else {
-		if(a > 0) {
-			n += freq[a - 1] * (a - xscale[band]);
-		}
-		while(a < b) {
-			n += freq[a];
-			++a;
-		}
-		if(b < 256) {
-			n += freq[b] * (xscale[band + 1] - b);
-		}
-	}
-	n *= bands / 12;
-	return 20 * grig_audio_FFT.log(10,n);
-};
-grig_audio_FFTVisualization.prototype = {
-	xscale: null
-	,makeLogGraph: function(freq,bands,dbRange,intRange) {
-		if(this.xscale.length != bands + 1) {
-			this.xscale = grig_audio_FFTVisualization.computeLogXScale(bands);
-		}
-		var graph = [];
-		graph.length = bands;
-		var _g = 0;
-		var _g1 = bands;
-		while(_g < _g1) {
-			var i = _g++;
-			var val = grig_audio_FFTVisualization.computeFreqBand(freq,this.xscale,i,bands);
-			val = (1 + val / dbRange) * intRange;
-			graph[i] = grig_audio_FFT.clamp_Int(val | 0,0,intRange);
-		}
-		return graph;
-	}
-	,__class__: grig_audio_FFTVisualization
-};
-var grig_audio_lime_UInt8ArrayTools = function() { };
-$hxClasses["grig.audio.lime.UInt8ArrayTools"] = grig_audio_lime_UInt8ArrayTools;
-grig_audio_lime_UInt8ArrayTools.__name__ = "grig.audio.lime.UInt8ArrayTools";
-grig_audio_lime_UInt8ArrayTools.getInt16 = function(data,pos) {
-	var val = data[pos] | data[pos + 1] << 8;
-	if((val & 32768) != 0) {
-		return val - 65536;
-	}
-	return val;
-};
-grig_audio_lime_UInt8ArrayTools.getInt24 = function(data,pos) {
-	var val = data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16;
-	if((val & 8388608) != 0) {
-		return val - 16777216;
-	}
-	return val;
-};
-grig_audio_lime_UInt8ArrayTools.getInt32 = function(data,pos) {
-	return data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16 | data[pos + 3] << 24;
-};
-grig_audio_lime_UInt8ArrayTools.toInterleaved = function(data,bitsPerSample) {
-	var newBuffer = [];
-	if(bitsPerSample == 8) {
-		newBuffer.length = data.length;
-		var _g = 0;
-		var _g1 = data.length;
-		while(_g < _g1) {
-			var i = _g++;
-			newBuffer[i] = UInt.toFloat(data[i]) / 128.0;
-		}
-	} else if(bitsPerSample == 16) {
-		newBuffer.length = data.length / 2 | 0;
-		var bytes = new haxe_io_Bytes(new Uint8Array(data.buffer));
-		var _g = 0;
-		var _g1 = newBuffer.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var pos = i * 2;
-			var val = data[pos] | data[pos + 1] << 8;
-			newBuffer[i] = ((val & 32768) != 0 ? val - 65536 : val) / 32767.0;
-		}
-	} else if(bitsPerSample == 24) {
-		var bytes = new haxe_io_Bytes(new Uint8Array(data.buffer));
-		newBuffer.length = data.length / 3 | 0;
-		var _g = 0;
-		var _g1 = newBuffer.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var pos = i * 3;
-			var val = data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16;
-			newBuffer[i] = ((val & 8388608) != 0 ? val - 16777216 : val) / 8388607.0;
-		}
-	} else if(bitsPerSample == 32) {
-		newBuffer.length = data.length / 4 | 0;
-		var _g = 0;
-		var _g1 = newBuffer.length;
-		while(_g < _g1) {
-			var i = _g++;
-			var pos = i * 4;
-			newBuffer[i] = (data[pos] | data[pos + 1] << 8 | data[pos + 2] << 16 | data[pos + 3] << 24) / 2147483647.0;
-		}
-	} else {
-		haxe_Log.trace("Unknown integer audio format",{ fileName : "grig/audio/lime/UInt8ArrayTools.hx", lineNumber : 55, className : "grig.audio.lime.UInt8ArrayTools", methodName : "toInterleaved"});
-	}
-	return newBuffer;
-};
 var haxe_StackItem = $hxEnums["haxe.StackItem"] = { __ename__:"haxe.StackItem",__constructs__:null
 	,CFunction: {_hx_name:"CFunction",_hx_index:0,__enum__:"haxe.StackItem",toString:$estr}
 	,Module: ($_=function(m) { return {_hx_index:1,m:m,__enum__:"haxe.StackItem",toString:$estr}; },$_._hx_name="Module",$_.__params__ = ["m"],$_)
@@ -134544,7 +133262,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 82089;
+	this.version = 820442;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -144035,6 +142753,7 @@ online_GameClient.updateAddresses = function() {
 		url = "https://raw.githubusercontent.com/Snirozu/Funkin-Psych-Online/main/server_addresses.txt";
 		break;
 	default:
+		url = "https://raw.githubusercontent.com/Snirozu/Funkin-Psych-Online/main/server_addresses.txt";
 	}
 	var http = new haxe_http_HttpJs(url);
 	http.onData = function(data) {
@@ -144047,14 +142766,16 @@ online_GameClient.updateAddresses = function() {
 			online_GameClient.serverAddresses.push(StringTools.trim(address));
 			online_GameClient.hasAddresses = true;
 		}
+		online_network_FunkinNetwork.client = new online_http_HTTPHandler(haxe_ds_Either.Right(online_GameClient.addressToUrl(online_GameClient.get_networkServerAddress())));
 	};
 	http.onError = function(error) {
 		online_GameClient.serverAddresses = ["wss://funkin.sniro.boo"];
-		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 747, className : "online.GameClient", methodName : "updateAddresses"});
+		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 753, className : "online.GameClient", methodName : "updateAddresses"});
 		online_GameClient.hasAddresses = false;
+		online_network_FunkinNetwork.client = new online_http_HTTPHandler(haxe_ds_Either.Right(online_GameClient.addressToUrl(online_GameClient.get_networkServerAddress())));
 	};
+	online_GameClient.serverAddresses = ["wss://funkin.sniro.boo"];
 	http.request();
-	online_GameClient.serverAddresses.push("ws://localhost:2567");
 	online_network_FunkinNetwork.client = new online_http_HTTPHandler(haxe_ds_Either.Right(online_GameClient.addressToUrl(online_GameClient.get_networkServerAddress())));
 };
 var online_NetworkClient = function() { };
@@ -149280,7 +148001,7 @@ online_http_HTTPClient.prototype = {
 			this.set_status(online_http_ClientStatus.COMPLETED);
 		} catch( _g ) {
 			var exc = haxe_Exception.caught(_g);
-			haxe_Log.trace("requestWeb failed: " + Std.string(exc),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 320, className : "online.http.HTTPClient", methodName : "requestWeb"});
+			haxe_Log.trace("requestWeb failed: " + Std.string(exc) + " host=" + (this.address != null ? this.address.host + ":" + this.address.port : "null") + " path=" + (this.requestData != null ? this.requestData.path : "null"),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 320, className : "online.http.HTTPClient", methodName : "requestWeb"});
 			this.response.exception = exc;
 			this.set_status(online_http_ClientStatus.FAILED(exc));
 		}
@@ -158469,7 +157190,7 @@ online_states_RoomState.playMusic = function(value) {
 			var path = backend_Paths.invalidChars.split(StringTools.replace(states_PlayState.SONG.song," ","-")).join("-");
 			var tmp1 = trackSuffix;
 			var songKeyWeb = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Inst" + (tmp1 != null ? tmp1 : "");
-			tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : "songs:assets/songs/" + songKeyWeb + "." + "mp3",0.5);
+			tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3"),0.5);
 			backend_Conductor.mapBPMChanges(states_PlayState.SONG);
 			backend_Conductor.set_bpm(states_PlayState.SONG.bpm);
 			return;
@@ -217652,7 +216373,7 @@ shaders_WarpEffect.prototype = $extend(flixel_FlxBasic.prototype,{
 });
 var shaders_WarpShader = function() {
 	if(this.__glFragmentSource == null) {
-		this.__glFragmentSource = "\n    // Flaring by nimitz (twitter: @stormoid)\n    // https://www.shadertoy.com/view/lsSGzy\n    // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License\n    // Contact the author for other licensing options\n\n    varying float openfl_Alphav;\n\t\tvarying vec4 openfl_ColorMultiplierv;\n\t\tvarying vec4 openfl_ColorOffsetv;\n\t\tvarying vec2 openfl_TextureCoordv;\n\n\t\tuniform bool openfl_HasColorTransform;\n\t\tuniform vec2 openfl_TextureSize;\n\t\tuniform sampler2D bitmap;\n\n\t\tuniform bool hasTransform;\n\t\tuniform bool hasColorTransform;\n\n\t\tvec4 flixel_texture2D(sampler2D bitmap, vec2 coord)\n\t\t{\n\t\t\tvec4 color = texture2D(bitmap, coord);\n\t\t\tif (!hasTransform)\n\t\t\t{\n\t\t\t\treturn color;\n\t\t\t}\n\n\t\t\tif (color.a == 0.0)\n\t\t\t{\n\t\t\t\treturn vec4(0.0, 0.0, 0.0, 0.0);\n\t\t\t}\n\n\t\t\tif (!hasColorTransform)\n\t\t\t{\n\t\t\t\treturn color * openfl_Alphav;\n\t\t\t}\n\n\t\t\tcolor = vec4(color.rgb / color.a, color.a);\n\n\t\t\tmat4 colorMultiplier = mat4(0);\n\t\t\tcolorMultiplier[0][0] = openfl_ColorMultiplierv.x;\n\t\t\tcolorMultiplier[1][1] = openfl_ColorMultiplierv.y;\n\t\t\tcolorMultiplier[2][2] = openfl_ColorMultiplierv.z;\n\t\t\tcolorMultiplier[3][3] = openfl_ColorMultiplierv.w;\n\n\t\t\tcolor = clamp(openfl_ColorOffsetv + (color * colorMultiplier), 0.0, 1.0);\n\n\t\t\tif (color.a > 0.0)\n\t\t\t{\n\t\t\t\treturn vec4(color.rgb * color.a * openfl_Alphav, color.a * openfl_Alphav);\n\t\t\t}\n\t\t\treturn vec4(0.0, 0.0, 0.0, 0.0);\n\t\t}\n\t\n\n    vec2 uv = openfl_TextureCoordv.xy;\n    vec2 fragCoord = openfl_TextureCoordv*openfl_TextureSize;\n    vec2 iResolution = openfl_TextureSize;\n    uniform float iTime;\n    #define iChannel0 bitmap\n    #define texture flixel_texture2D\n    #define fragColor gl_FragColor\n    #define mainImage main\n\n    //change this value (1 to 5) or tweak the settings yourself.\n    //the gamma and spot brightness parameters can use negative values\n    #define TYPE 4\n\n    #if TYPE == 1\n        #define brightness 1.\n        #define ray_brightness 11.\n        #define gamma 5.\n        #define spot_brightness 4.\n        #define ray_density 1.5\n        #define curvature .1\n        #define red   7.\n        #define green 1.3\n        #define blue  1.\n        //1 -> ridged, 2 -> sinfbm, 3 -> pure fbm\n        #define noisetype 2\n        #define sin_freq 50. //for type 2\n    #elif TYPE == 2\n        #define brightness 1.5\n        #define ray_brightness 10.\n        #define gamma 8.\n        #define spot_brightness 15.\n        #define ray_density 3.5\n        #define curvature 15.\n        #define red   4.\n        #define green 1.\n        #define blue  .1\n        #define noisetype 1\n        #define sin_freq 13.\n    #elif TYPE == 3\n        #define brightness 1.5\n        #define ray_brightness 20.\n        #define gamma 4.\n        #define spot_brightness .95\n        #define ray_density 3.14\n        #define curvature 17.\n        #define red   2.9\n        #define green .7\n        #define blue  3.5\n        #define noisetype 2\n        #define sin_freq 15.\n    #elif TYPE == 4\n        #define brightness 2.\n        #define ray_brightness 4.\n        #define gamma 6.\n        #define spot_brightness 0.\n        #define ray_density 6.5\n        #define curvature 70.\n        #define red   2.9\n        #define green .7\n        #define blue  3.5\n        #define noisetype 1\n        #define sin_freq 6.\n        #define YO_DAWG\n    #elif TYPE == 5\n        #define brightness 2.\n        #define ray_brightness 5.\n        #define gamma 5.\n        #define spot_brightness 1.7\n        #define ray_density 30.\n        #define curvature 1.\n        #define red   1.\n        #define green 4.0\n        #define blue  4.9\n        #define noisetype 2\n        #define sin_freq 5. //for type 2\n    #endif\n\n\n    #define PROCEDURAL_NOISE\n    //#define YO_DAWG\n\n    float hash( float n ){return fract(sin(n)*43758.5453);}\n\n    float noise( in vec2 x )\n    {\n        #ifdef PROCEDURAL_NOISE\n        x *= 1.75;\n        vec2 p = floor(x);\n        vec2 f = fract(x);\n\n        f = f*f*(3.0-2.0*f);\n\n        float n = p.x + p.y*57.0;\n\n        float res = mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),\n                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);\n        return res;\n        #else\n        return texture(iChannel0, x*.01).x;\n        #endif\n    }\n\n    mat2 m2 = mat2( 0.80,  0.60, -0.60,  0.80 );\n    float fbm( in vec2 p )\n    {\t\n        float z=2.;\n        float rz = 0.;\n        p *= 0.25;\n        for (float i= 1.;i < 6.;i++ )\n        {\n            #if noisetype == 1\n            rz+= abs((noise(p)-0.5)*2.)/z;\n            #elif noisetype == 2\n            rz+= (sin(noise(p)*sin_freq)*0.5+0.5) /z;\n            #else\n            rz+= noise(p)/z;\n            #endif\n            z = z*2.;\n            p = p*2.*m2;\n        }\n        return rz;\n    }\n\n    void mainImage()\n    {\n        float t = -iTime*0.03;\n        vec2 uv = fragCoord.xy / iResolution.xy-0.5;\n        uv.x *= iResolution.x/iResolution.y;\n        uv*= curvature*.05+0.0001;\n        \n        float r  = sqrt(dot(uv,uv));\n        float x = dot(normalize(uv), vec2(.5,0.))+t;\t\n        float y = dot(normalize(uv), vec2(.0,.5))+t;\n        \n        #ifdef YO_DAWG\n        x = fbm(vec2(y*ray_density*0.5,r+x*ray_density*.2));\n        y = fbm(vec2(r+y*ray_density*0.1,x*ray_density*.5));\n        #endif\n        \n        float val;\n        val = fbm(vec2(r+y*ray_density,r+x*ray_density-y));\n        val = smoothstep(gamma*.02-.1,ray_brightness+(gamma*0.02-.1)+.001,val);\n        val = sqrt(val);\n        \n        vec3 col = val/vec3(red,green,blue);\n        col = clamp(1.-col,0.,1.);\n        col = mix(col,vec3(1.),spot_brightness-r/0.1/curvature*200./brightness);\n        col = clamp(col,0.,1.);\n        col = pow(col,vec3(1.7));\n        \n        fragColor = vec4(col * 0.15, 0.3);\n    }\n    ";
+		this.__glFragmentSource = "\n    // Flaring by nimitz (twitter: @stormoid)\n    // https://www.shadertoy.com/view/lsSGzy\n    // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License\n    // Contact the author for other licensing options\n\n    varying float openfl_Alphav;\n\t\tvarying vec4 openfl_ColorMultiplierv;\n\t\tvarying vec4 openfl_ColorOffsetv;\n\t\tvarying vec2 openfl_TextureCoordv;\n\n\t\tuniform bool openfl_HasColorTransform;\n\t\tuniform vec2 openfl_TextureSize;\n\t\tuniform sampler2D bitmap;\n\n\t\tuniform bool hasTransform;\n\t\tuniform bool hasColorTransform;\n\n\t\tvec4 flixel_texture2D(sampler2D bitmap, vec2 coord)\n\t\t{\n\t\t\tvec4 color = texture2D(bitmap, coord);\n\t\t\tif (!hasTransform)\n\t\t\t{\n\t\t\t\treturn color;\n\t\t\t}\n\n\t\t\tif (color.a == 0.0)\n\t\t\t{\n\t\t\t\treturn vec4(0.0, 0.0, 0.0, 0.0);\n\t\t\t}\n\n\t\t\tif (!hasColorTransform)\n\t\t\t{\n\t\t\t\treturn color * openfl_Alphav;\n\t\t\t}\n\n\t\t\tcolor = vec4(color.rgb / color.a, color.a);\n\n\t\t\tmat4 colorMultiplier = mat4(0);\n\t\t\tcolorMultiplier[0][0] = openfl_ColorMultiplierv.x;\n\t\t\tcolorMultiplier[1][1] = openfl_ColorMultiplierv.y;\n\t\t\tcolorMultiplier[2][2] = openfl_ColorMultiplierv.z;\n\t\t\tcolorMultiplier[3][3] = openfl_ColorMultiplierv.w;\n\n\t\t\tcolor = clamp(openfl_ColorOffsetv + (color * colorMultiplier), 0.0, 1.0);\n\n\t\t\tif (color.a > 0.0)\n\t\t\t{\n\t\t\t\treturn vec4(color.rgb * color.a * openfl_Alphav, color.a * openfl_Alphav);\n\t\t\t}\n\t\t\treturn vec4(0.0, 0.0, 0.0, 0.0);\n\t\t}\n\t\n\n    #define fragCoord (openfl_TextureCoordv*openfl_TextureSize)\n    #define iResolution openfl_TextureSize\n    uniform float iTime;\n    #define iChannel0 bitmap\n    #define texture flixel_texture2D\n    #define fragColor gl_FragColor\n    #define mainImage main\n\n    //change this value (1 to 5) or tweak the settings yourself.\n    //the gamma and spot brightness parameters can use negative values\n    #define TYPE 4\n\n    #if TYPE == 1\n        #define brightness 1.\n        #define ray_brightness 11.\n        #define gamma 5.\n        #define spot_brightness 4.\n        #define ray_density 1.5\n        #define curvature .1\n        #define red   7.\n        #define green 1.3\n        #define blue  1.\n        //1 -> ridged, 2 -> sinfbm, 3 -> pure fbm\n        #define noisetype 2\n        #define sin_freq 50. //for type 2\n    #elif TYPE == 2\n        #define brightness 1.5\n        #define ray_brightness 10.\n        #define gamma 8.\n        #define spot_brightness 15.\n        #define ray_density 3.5\n        #define curvature 15.\n        #define red   4.\n        #define green 1.\n        #define blue  .1\n        #define noisetype 1\n        #define sin_freq 13.\n    #elif TYPE == 3\n        #define brightness 1.5\n        #define ray_brightness 20.\n        #define gamma 4.\n        #define spot_brightness .95\n        #define ray_density 3.14\n        #define curvature 17.\n        #define red   2.9\n        #define green .7\n        #define blue  3.5\n        #define noisetype 2\n        #define sin_freq 15.\n    #elif TYPE == 4\n        #define brightness 2.\n        #define ray_brightness 4.\n        #define gamma 6.\n        #define spot_brightness 0.\n        #define ray_density 6.5\n        #define curvature 70.\n        #define red   2.9\n        #define green .7\n        #define blue  3.5\n        #define noisetype 1\n        #define sin_freq 6.\n        #define YO_DAWG\n    #elif TYPE == 5\n        #define brightness 2.\n        #define ray_brightness 5.\n        #define gamma 5.\n        #define spot_brightness 1.7\n        #define ray_density 30.\n        #define curvature 1.\n        #define red   1.\n        #define green 4.0\n        #define blue  4.9\n        #define noisetype 2\n        #define sin_freq 5. //for type 2\n    #endif\n\n\n    #define PROCEDURAL_NOISE\n    //#define YO_DAWG\n\n    float hash( float n ){return fract(sin(n)*43758.5453);}\n\n    float noise( in vec2 x )\n    {\n        #ifdef PROCEDURAL_NOISE\n        x *= 1.75;\n        vec2 p = floor(x);\n        vec2 f = fract(x);\n\n        f = f*f*(3.0-2.0*f);\n\n        float n = p.x + p.y*57.0;\n\n        float res = mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),\n                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);\n        return res;\n        #else\n        return texture(iChannel0, x*.01).x;\n        #endif\n    }\n\n    mat2 m2 = mat2( 0.80,  0.60, -0.60,  0.80 );\n    float fbm( in vec2 p )\n    {\t\n        float z=2.;\n        float rz = 0.;\n        p *= 0.25;\n        for (float i= 1.;i < 6.;i++ )\n        {\n            #if noisetype == 1\n            rz+= abs((noise(p)-0.5)*2.)/z;\n            #elif noisetype == 2\n            rz+= (sin(noise(p)*sin_freq)*0.5+0.5) /z;\n            #else\n            rz+= noise(p)/z;\n            #endif\n            z = z*2.;\n            p = p*2.*m2;\n        }\n        return rz;\n    }\n\n    void mainImage()\n    {\n        float t = -iTime*0.03;\n        vec2 uv = fragCoord.xy / iResolution.xy-0.5;\n        uv.x *= iResolution.x/iResolution.y;\n        uv*= curvature*.05+0.0001;\n        \n        float r  = sqrt(dot(uv,uv));\n        float x = dot(normalize(uv), vec2(.5,0.))+t;\t\n        float y = dot(normalize(uv), vec2(.0,.5))+t;\n        \n        #ifdef YO_DAWG\n        x = fbm(vec2(y*ray_density*0.5,r+x*ray_density*.2));\n        y = fbm(vec2(r+y*ray_density*0.1,x*ray_density*.5));\n        #endif\n        \n        float val;\n        val = fbm(vec2(r+y*ray_density,r+x*ray_density-y));\n        val = smoothstep(gamma*.02-.1,ray_brightness+(gamma*0.02-.1)+.001,val);\n        val = sqrt(val);\n        \n        vec3 col = val/vec3(red,green,blue);\n        col = clamp(1.-col,0.,1.);\n        col = mix(col,vec3(1.),spot_brightness-r/0.1/curvature*200./brightness);\n        col = clamp(col,0.,1.);\n        col = pow(col,vec3(1.7));\n        \n        fragColor = vec4(col * 0.15, 0.3);\n    }\n    ";
 	}
 	if(this.__glVertexSource == null) {
 		this.__glVertexSource = "\n\t\tattribute float openfl_Alpha;\n\t\tattribute vec4 openfl_ColorMultiplier;\n\t\tattribute vec4 openfl_ColorOffset;\n\t\tattribute vec4 openfl_Position;\n\t\tattribute vec2 openfl_TextureCoord;\n\n\t\tvarying float openfl_Alphav;\n\t\tvarying vec4 openfl_ColorMultiplierv;\n\t\tvarying vec4 openfl_ColorOffsetv;\n\t\tvarying vec2 openfl_TextureCoordv;\n\n\t\tuniform mat4 openfl_Matrix;\n\t\tuniform bool openfl_HasColorTransform;\n\t\tuniform vec2 openfl_TextureSize;\n\n\t\t\n\t\tattribute float alpha;\n\t\tattribute vec4 colorMultiplier;\n\t\tattribute vec4 colorOffset;\n\t\tuniform bool hasColorTransform;\n\t\t\n\t\tvoid main(void)\n\t\t{\n\t\t\topenfl_Alphav = openfl_Alpha;\n\t\topenfl_TextureCoordv = openfl_TextureCoord;\n\n\t\tif (openfl_HasColorTransform) {\n\n\t\t\topenfl_ColorMultiplierv = openfl_ColorMultiplier;\n\t\t\topenfl_ColorOffsetv = openfl_ColorOffset / 255.0;\n\n\t\t}\n\n\t\tgl_Position = openfl_Matrix * openfl_Position;\n\n\t\t\t\n\t\t\topenfl_Alphav = openfl_Alpha * alpha;\n\t\t\t\n\t\t\tif (hasColorTransform)\n\t\t\t{\n\t\t\t\topenfl_ColorOffsetv = colorOffset / 255.0;\n\t\t\t\topenfl_ColorMultiplierv = colorMultiplier;\n\t\t\t}\n\t\t}";
@@ -221316,7 +220037,7 @@ states_LoadingState.getSongPath = function() {
 	if(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3"))) {
 		return backend_Paths.returnSound("songs",songKeyWeb);
 	} else {
-		return "songs:assets/songs/" + songKeyWeb + "." + "mp3";
+		return backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3");
 	}
 };
 states_LoadingState.getVocalPath = function() {
@@ -221356,7 +220077,7 @@ states_LoadingState.getNextState = function(target,stopMusic) {
 		directory = weekDir;
 	}
 	backend_Paths.setCurrentLevel(directory);
-	haxe_Log.trace("Setting asset folder to " + directory,{ fileName : "source/states/LoadingState.hx", lineNumber : 187, className : "states.LoadingState", methodName : "getNextState"});
+	haxe_Log.trace("Setting asset folder to " + directory,{ fileName : "source/states/LoadingState.hx", lineNumber : 216, className : "states.LoadingState", methodName : "getNextState"});
 	var loaded = false;
 	if(states_PlayState.SONG != null) {
 		loaded = states_LoadingState.isSoundLoaded(states_LoadingState.getSongPath()) && (!states_PlayState.SONG.needsVoices || states_LoadingState.isSoundLoaded(states_LoadingState.getVocalPath())) && states_LoadingState.isLibraryLoaded("shared") && states_LoadingState.isLibraryLoaded("week_assets");
@@ -221469,9 +220190,12 @@ states_LoadingState.prototype = $extend(backend_MusicBeatState.prototype,{
 			_gthis.callbacks = new states_MultiCallback($bind(_gthis,_gthis.onLoad));
 			var introComplete = _gthis.callbacks.add("introComplete");
 			if(states_PlayState.SONG != null) {
-				_gthis.checkLoadSong(states_LoadingState.getSongPath());
-				if(states_PlayState.SONG.needsVoices) {
-					_gthis.checkLoadSong(states_LoadingState.getVocalPath());
+				var _g = 0;
+				var _g1 = backend_Paths.webSongSounds(states_PlayState.SONG.song);
+				while(_g < _g1.length) {
+					var snd = _g1[_g];
+					++_g;
+					_gthis.checkLoadSong(snd);
 				}
 			}
 			_gthis.checkLibrary("shared");
@@ -221485,20 +220209,69 @@ states_LoadingState.prototype = $extend(backend_MusicBeatState.prototype,{
 			});
 		});
 	}
+	,waitForSound: function(snd) {
+		if(snd == null || snd.get_length() > 0) {
+			return;
+		}
+		var cb = this.callbacks.add("snd:" + Std.string(Math.random()));
+		var waited = 0;
+		new flixel_util_FlxTimer().start(0.05,function(t) {
+			waited += 0.05;
+			if(snd.get_length() > 0 || waited > 20) {
+				t.cancel();
+				cb();
+			}
+		},0);
+	}
+	,preloadSongAudioWeb: function() {
+		if(states_PlayState.SONG == null) {
+			return;
+		}
+		var path = backend_Paths.invalidChars.split(StringTools.replace(states_PlayState.SONG.song," ","-")).join("-");
+		var sn = backend_Paths.hideChars.split(path).join("").toLowerCase();
+		var dirs = ["assets/songs/" + sn];
+		var _g = 0;
+		var list = [];
+		var modsFolder = "mods/";
+		if(sys_FileSystem.exists(modsFolder)) {
+			var _g1 = 0;
+			var _g2 = sys_FileSystem.readDirectory(modsFolder);
+			while(_g1 < _g2.length) {
+				var folder = _g2[_g1];
+				++_g1;
+				var path = haxe_io_Path.join([modsFolder,folder]);
+				if(sys_FileSystem.isDirectory(path) && backend_Mods.ignoreModFolders.indexOf(folder.toLowerCase()) == -1 && list.indexOf(folder) == -1) {
+					list.push(folder);
+				}
+			}
+		}
+		var _g1 = list;
+		while(_g < _g1.length) {
+			var m = _g1[_g];
+			++_g;
+			dirs.push("mods/" + m + "/songs/" + sn);
+		}
+		var _g = 0;
+		while(_g < dirs.length) {
+			var d = dirs[_g];
+			++_g;
+			if(!sys_FileSystem.exists(d) || !sys_FileSystem.isDirectory(d)) {
+				continue;
+			}
+			var _g1 = 0;
+			var _g2 = sys_FileSystem.readDirectory(d);
+			while(_g1 < _g2.length) {
+				var f = _g2[_g1];
+				++_g1;
+				if(StringTools.endsWith(f,".mp3") || StringTools.endsWith(f,".ogg") || StringTools.endsWith(f,".wav")) {
+					this.waitForSound(backend_Paths.webSound(d + "/" + f));
+				}
+			}
+		}
+	}
 	,checkLoadSong: function(path) {
 		if(typeof(path) != "string") {
-			var snd = path;
-			if(snd != null && snd.get_length() <= 0) {
-				var cb = this.callbacks.add("modsong:" + Std.string(Math.random()));
-				var waited = 0;
-				new flixel_util_FlxTimer().start(0.05,function(t) {
-					waited += 0.05;
-					if(snd.get_length() > 0 || waited > 15) {
-						t.cancel();
-						cb();
-					}
-				},0);
-			}
+			this.waitForSound(path);
 			return;
 		}
 		if(!openfl_utils_Assets.cache.hasSound(path)) {
@@ -221511,7 +220284,7 @@ states_LoadingState.prototype = $extend(backend_MusicBeatState.prototype,{
 		}
 	}
 	,checkLibrary: function(library) {
-		haxe_Log.trace(openfl_utils_Assets.hasLibrary(library),{ fileName : "source/states/LoadingState.hx", lineNumber : 118, className : "states.LoadingState", methodName : "checkLibrary"});
+		haxe_Log.trace(openfl_utils_Assets.hasLibrary(library),{ fileName : "source/states/LoadingState.hx", lineNumber : 147, className : "states.LoadingState", methodName : "checkLibrary"});
 		if(openfl_utils_Assets.getLibrary(library) == null) {
 			if(!Object.prototype.hasOwnProperty.call(lime_utils_Assets.libraryPaths.h,library)) {
 				throw haxe_Exception.thrown("Missing library: " + library);
@@ -221599,19 +220372,19 @@ states_MultiCallback.prototype = {
 				_gthis.numRemaining--;
 				if(_gthis.logId != null) {
 					if(_gthis.logId != null) {
-						haxe_Log.trace("" + _gthis.logId + ": " + ("fired " + id + ", " + _gthis.numRemaining + " remaining"),{ fileName : "source/states/LoadingState.hx", lineNumber : 342, className : "states.MultiCallback", methodName : "log"});
+						haxe_Log.trace("" + _gthis.logId + ": " + ("fired " + id + ", " + _gthis.numRemaining + " remaining"),{ fileName : "source/states/LoadingState.hx", lineNumber : 371, className : "states.MultiCallback", methodName : "log"});
 					}
 				}
 				if(_gthis.numRemaining == 0) {
 					if(_gthis.logId != null) {
 						if(_gthis.logId != null) {
-							haxe_Log.trace("" + _gthis.logId + ": " + "all callbacks fired",{ fileName : "source/states/LoadingState.hx", lineNumber : 342, className : "states.MultiCallback", methodName : "log"});
+							haxe_Log.trace("" + _gthis.logId + ": " + "all callbacks fired",{ fileName : "source/states/LoadingState.hx", lineNumber : 371, className : "states.MultiCallback", methodName : "log"});
 						}
 					}
 					_gthis.callback();
 				}
 			} else if(_gthis.logId != null) {
-				haxe_Log.trace("" + _gthis.logId + ": " + ("already fired " + id),{ fileName : "source/states/LoadingState.hx", lineNumber : 342, className : "states.MultiCallback", methodName : "log"});
+				haxe_Log.trace("" + _gthis.logId + ": " + ("already fired " + id),{ fileName : "source/states/LoadingState.hx", lineNumber : 371, className : "states.MultiCallback", methodName : "log"});
 			}
 		};
 		this.unfired.h[id] = func;
@@ -221619,7 +220392,7 @@ states_MultiCallback.prototype = {
 	}
 	,log: function(msg) {
 		if(this.logId != null) {
-			haxe_Log.trace("" + this.logId + ": " + msg,{ fileName : "source/states/LoadingState.hx", lineNumber : 342, className : "states.MultiCallback", methodName : "log"});
+			haxe_Log.trace("" + this.logId + ": " + msg,{ fileName : "source/states/LoadingState.hx", lineNumber : 371, className : "states.MultiCallback", methodName : "log"});
 		}
 	}
 	,getFired: function() {
@@ -225902,6 +224675,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		return " - " + this.songPoints + "FP";
 	}
 	,startSong: function() {
+		var _gthis = this;
 		this.startingSong = false;
 		flixel_FlxG.sound.playMusic(this.inst._sound,1,false);
 		flixel_FlxG.sound.music.set_pitch(this.playbackRate);
@@ -225912,6 +224686,9 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		flixel_FlxG.sound.music.onComplete = tmp;
 		this.vocals.play();
 		this.opponentVocals.play();
+		new flixel_util_FlxTimer().start(6,function(_) {
+			haxe_Log.trace("DBGVOX2 vplaying=" + Std.string(_gthis.vocals._channel != null) + " vvol=" + _gthis.vocals._volume + " vtime=" + _gthis.vocals._time + " vlen=" + _gthis.vocals._length + " mus=" + flixel_FlxG.sound.music._time + " mvol=" + flixel_FlxG.sound.music._volume + " oppPlaying=" + Std.string(_gthis.opponentVocals._channel != null) + " oppLen=" + _gthis.opponentVocals._length + " gvol=" + flixel_FlxG.sound.volume + " muted=" + Std.string(flixel_FlxG.sound.muted),{ fileName : "source/states/PlayState.hx", lineNumber : 2487, className : "states.PlayState", methodName : "startSong"});
+		},3);
 		this.setSongTime(Math.max(0,states_PlayState.startOnTime - 500));
 		states_PlayState.startOnTime = 0;
 		if(this.paused) {
@@ -225945,111 +224722,15 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		this.opponentVocals = new flixel_sound_FlxSound();
 		if(songData.needsVoices) {
 			try {
-				var song = this.curSong;
-				var postfix = this.boyfriend.vocalsFile;
-				var songSuffix = this.songSuffix;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp = songSuffix;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-					if(postfix != null) {
-						songKey += "-" + postfix;
-					}
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g ) {
-					voices = null;
-				}
-				var playerVocals = voices;
+				var playerVocals = backend_Paths.voices(this.curSong,this.boyfriend.vocalsFile,this.songSuffix);
 				if(playerVocals == null) {
-					var song = this.curSong;
-					var songSuffix = this.songSuffix;
-					var voices = null;
-					try {
-						var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-						var tmp = songSuffix;
-						var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-						songKey += "-" + "Player";
-						var sound = backend_Paths.returnSound("songs",songKey);
-						if(sound == null || sound.get_length() <= 0) {
-							sound = null;
-						}
-						voices = sound;
-					} catch( _g ) {
-						voices = null;
-					}
-					playerVocals = voices;
+					playerVocals = backend_Paths.voices(this.curSong,"Player",this.songSuffix);
 				}
-				var tmp = this.vocals;
-				var tmp1 = playerVocals;
-				var this1;
-				if(tmp1 != null) {
-					this1 = tmp1;
-				} else {
-					var song = this.curSong;
-					var postfix = null;
-					var songSuffix = this.songSuffix;
-					var voices = null;
-					try {
-						var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-						var tmp1 = songSuffix;
-						var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp1 != null ? tmp1 : "");
-						if(postfix != null) {
-							songKey += "-" + postfix;
-						}
-						var sound = backend_Paths.returnSound("songs",songKey);
-						if(sound == null || sound.get_length() <= 0) {
-							sound = null;
-						}
-						voices = sound;
-					} catch( _g ) {
-						voices = null;
-					}
-					this1 = voices;
-				}
-				tmp.loadEmbedded(this1);
-				var song = this.curSong;
-				var postfix = this.dad.vocalsFile;
-				var songSuffix = this.songSuffix;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp = songSuffix;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-					if(postfix != null) {
-						songKey += "-" + postfix;
-					}
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g ) {
-					voices = null;
-				}
-				var oppVocals = voices;
+				var tmp = playerVocals;
+				this.vocals.loadEmbedded(tmp != null ? tmp : backend_Paths.voices(this.curSong,null,this.songSuffix));
+				var oppVocals = backend_Paths.voices(this.curSong,this.dad.vocalsFile,this.songSuffix);
 				if(oppVocals == null) {
-					var song = this.curSong;
-					var songSuffix = this.songSuffix;
-					var voices = null;
-					try {
-						var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-						var tmp = songSuffix;
-						var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-						songKey += "-" + "Opponent";
-						var sound = backend_Paths.returnSound("songs",songKey);
-						if(sound == null || sound.get_length() <= 0) {
-							sound = null;
-						}
-						voices = sound;
-					} catch( _g ) {
-						voices = null;
-					}
-					oppVocals = voices;
+					oppVocals = backend_Paths.voices(this.curSong,"Opponent",this.songSuffix);
 				}
 				if(oppVocals != null) {
 					this.opponentVocals.loadEmbedded(oppVocals);
@@ -226058,6 +224739,12 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				haxe_NativeStackTrace.lastError = _g;
 			}
 		}
+		haxe_Log.trace("DBGVOC vocals.length=" + this.vocals._length + " opp=" + this.opponentVocals._length,{ fileName : "source/states/PlayState.hx", lineNumber : 2562, className : "states.PlayState", methodName : "generateSong"});
+		var tmp = "DBGVOX song=" + this.curSong + " vocals=" + this.vocals._length + " opp=" + this.opponentVocals._length + " needs=" + (songData.needsVoices == null ? "null" : "" + songData.needsVoices) + " pv=";
+		var tmp1 = backend_Paths.voices(this.curSong,this.boyfriend.vocalsFile,this.songSuffix);
+		var tmp2 = tmp1 == null ? "null" : Std.string(tmp1);
+		var tmp1 = backend_Paths.voices(this.curSong,null,this.songSuffix);
+		haxe_Log.trace(tmp + tmp2 + " pv2=" + (tmp1 == null ? "null" : Std.string(tmp1)),{ fileName : "source/states/PlayState.hx", lineNumber : 2565, className : "states.PlayState", methodName : "generateSong"});
 		this.vocals.set_pitch(this.playbackRate);
 		this.opponentVocals.set_pitch(this.playbackRate);
 		flixel_FlxG.sound.list.add(this.vocals);
@@ -226067,7 +224754,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		var path = backend_Paths.invalidChars.split(StringTools.replace(this.curSong," ","-")).join("-");
 		var tmp1 = songSuffix;
 		var songKeyWeb = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Inst" + (tmp1 != null ? tmp1 : "");
-		this.inst = tmp.loadEmbedded(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : "songs:assets/songs/" + songKeyWeb + "." + "mp3");
+		this.inst = tmp.loadEmbedded(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3"));
 		flixel_FlxG.sound.list.add(this.inst);
 		this.notes = new flixel_group_FlxTypedGroup();
 		this.noteGroup.add(this.notes);
@@ -226142,7 +224829,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					friendNotes[scaleKeyBack(newNoteData)].push(newNoteData);
 				}
 			}
-			haxe_Log.trace("NEW Note Mapping: " + Std.string(friendNotes),{ fileName : "source/states/PlayState.hx", lineNumber : 2643, className : "states.PlayState", methodName : "generateSong"});
+			haxe_Log.trace("NEW Note Mapping: " + Std.string(friendNotes),{ fileName : "source/states/PlayState.hx", lineNumber : 2652, className : "states.PlayState", methodName : "generateSong"});
 			var _g = [];
 			var _g1 = 0;
 			var _g2 = objects_Note.maniaKeys;
@@ -226176,11 +224863,12 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				note[1] = nextNoteData(daNoteData,mustPress);
 				note[1] += this.maniaModifier * daNoteDataSide;
 			}
-			haxe_Log.trace("Converted from: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2687, className : "states.PlayState", methodName : "generateSong"});
+			haxe_Log.trace("Converted from: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2696, className : "states.PlayState", methodName : "generateSong"});
 			objects_Note.set_maniaKeys(this.maniaModifier);
 		}
-		haxe_Log.trace("Song Keys: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2691, className : "states.PlayState", methodName : "generateSong"});
-		haxe_Log.trace("DBGINST len=" + this.inst._length + " dataNotes=" + dataNotes.length + " noteDataSecs=" + noteData.length,{ fileName : "source/states/PlayState.hx", lineNumber : 2693, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("Song Keys: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2700, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("VOICES len=" + this.vocals._length + " opp=" + this.opponentVocals._length,{ fileName : "source/states/PlayState.hx", lineNumber : 2702, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("DBGINST len=" + this.inst._length + " dataNotes=" + dataNotes.length + " noteDataSecs=" + noteData.length,{ fileName : "source/states/PlayState.hx", lineNumber : 2703, className : "states.PlayState", methodName : "generateSong"});
 		this.songSpeedType = backend_ClientPrefs.getGameplaySetting("scrolltype");
 		switch(this.songSpeedType) {
 		case "constant":
@@ -226302,14 +224990,14 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 			}
 		}
 		this.songDensity = playingNoteCount == 0 || this.inst._length <= 0 ? 0 : playingNoteCount / (this.inst._length / this.playbackRate / 1000) / 2;
-		haxe_Log.trace("note density score: " + this.songDensity + (" for total of " + playingNoteCount + " notes"),{ fileName : "source/states/PlayState.hx", lineNumber : 2836, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("note density score: " + this.songDensity + (" for total of " + playingNoteCount + " notes"),{ fileName : "source/states/PlayState.hx", lineNumber : 2846, className : "states.PlayState", methodName : "generateSong"});
 		var maxFP = online_FunkinPoints.calcFP(1,0,this.songDensity,playingNoteCount,playingNoteCount);
-		haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2839, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2849, className : "states.PlayState", methodName : "generateSong"});
 		if(backend_ClientPrefs.data.newFPPreview) {
 			var maxFP = online_FunkinPoints.devFP(1,0,this.songDensity,playingNoteCount,playingNoteCount,this.difficultyInfo);
-			haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2842, className : "states.PlayState", methodName : "generateSong"});
+			haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2852, className : "states.PlayState", methodName : "generateSong"});
 		}
-		haxe_Log.trace("NPH: " + notesPerHalf,{ fileName : "source/states/PlayState.hx", lineNumber : 2846, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("NPH: " + notesPerHalf,{ fileName : "source/states/PlayState.hx", lineNumber : 2856, className : "states.PlayState", methodName : "generateSong"});
 		var _g = 0;
 		var _g1 = songData.events;
 		while(_g < _g1.length) {
@@ -226325,7 +225013,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		this.unspawnNotes.sort(states_PlayState.sortByTime);
 		this.generatedMusic = true;
 		this.difficultyInfo = online_ChartAnalyzer.calc(songData,states_PlayState.playsAsBF());
-		haxe_Log.trace(this.difficultyInfo,{ fileName : "source/states/PlayState.hx", lineNumber : 2857, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace(this.difficultyInfo,{ fileName : "source/states/PlayState.hx", lineNumber : 2867, className : "states.PlayState", methodName : "generateSong"});
 		this.prepareNetSong();
 	}
 	,netSong: null
@@ -226553,7 +225241,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		if(this.finishTimer != null) {
 			return;
 		}
-		haxe_Log.trace("resynced vocals at " + Math.floor(backend_Conductor.songPosition),{ fileName : "source/states/PlayState.hx", lineNumber : 3159, className : "states.PlayState", methodName : "resyncVocals"});
+		haxe_Log.trace("resynced vocals at " + Math.floor(backend_Conductor.songPosition),{ fileName : "source/states/PlayState.hx", lineNumber : 3169, className : "states.PlayState", methodName : "resyncVocals"});
 		flixel_FlxG.sound.music.play();
 		flixel_FlxG.sound.music.set_pitch(this.playbackRate);
 		backend_Conductor.songPosition = flixel_FlxG.sound.music._time;
@@ -226918,7 +225606,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		}
 		if(!(online_GameClient.client != null || online_GameClient.reconnecting) && !backend_ClientPrefs.data.noReset && this.get_controls().get_RESET() && this.canReset && !this.inCutscene && this.startedCountdown && !this.endingSong && canInput && states_PlayState.replayData == null && !this.cpuControlled) {
 			this.subsHealth(9999);
-			haxe_Log.trace("RESET = True",{ fileName : "source/states/PlayState.hx", lineNumber : 3511, className : "states.PlayState", methodName : "update"});
+			haxe_Log.trace("RESET = True",{ fileName : "source/states/PlayState.hx", lineNumber : 3521, className : "states.PlayState", methodName : "update"});
 		}
 		this.doDeathCheck();
 		if(this.unspawnNotes[0] != null) {
@@ -228162,7 +226850,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 						});
 					}
 					if(!backend_ClientPrefs.getGameplaySetting("practice") && !this.isInvalidScore()) {
-						haxe_Log.trace("saving week performance for: " + backend_WeekData.getWeekFileName(),{ fileName : "source/states/PlayState.hx", lineNumber : 4620, className : "states.PlayState", methodName : "endSong"});
+						haxe_Log.trace("saving week performance for: " + backend_WeekData.getWeekFileName(),{ fileName : "source/states/PlayState.hx", lineNumber : 4630, className : "states.PlayState", methodName : "endSong"});
 						states_StoryMenuState.weekCompleted.h[backend_WeekData.weeksList[states_PlayState.storyWeek]] = true;
 						backend_Highscore.saveWeekScore(backend_WeekData.getWeekFileName(),states_PlayState.campaignScore,states_PlayState.storyDifficulty);
 						flixel_FlxG.save.data.weekCompleted = states_StoryMenuState.weekCompleted;
@@ -228182,9 +226870,9 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					}
 					var path = backend_Paths.invalidChars.split(StringTools.replace(fileSuffix," ","-")).join("-");
 					var difficulty = backend_Paths.hideChars.split(path).join("").toLowerCase();
-					haxe_Log.trace("LOADING NEXT SONG",{ fileName : "source/states/PlayState.hx", lineNumber : 4633, className : "states.PlayState", methodName : "endSong"});
+					haxe_Log.trace("LOADING NEXT SONG",{ fileName : "source/states/PlayState.hx", lineNumber : 4643, className : "states.PlayState", methodName : "endSong"});
 					var path = backend_Paths.invalidChars.split(StringTools.replace(states_PlayState.storyPlaylist[0]," ","-")).join("-");
-					haxe_Log.trace(backend_Paths.hideChars.split(path).join("").toLowerCase() + difficulty,{ fileName : "source/states/PlayState.hx", lineNumber : 4634, className : "states.PlayState", methodName : "endSong"});
+					haxe_Log.trace(backend_Paths.hideChars.split(path).join("").toLowerCase() + difficulty,{ fileName : "source/states/PlayState.hx", lineNumber : 4644, className : "states.PlayState", methodName : "endSong"});
 					flixel_addons_transition_FlxTransitionableState.skipNextTransIn = true;
 					flixel_addons_transition_FlxTransitionableState.skipNextTransOut = true;
 					states_PlayState.prevCamFollow = this.camFollow;
@@ -228208,7 +226896,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					}
 				}
 			} else {
-				haxe_Log.trace("WENT BACK TO FREEPLAY??",{ fileName : "source/states/PlayState.hx", lineNumber : 4649, className : "states.PlayState", methodName : "endSong"});
+				haxe_Log.trace("WENT BACK TO FREEPLAY??",{ fileName : "source/states/PlayState.hx", lineNumber : 4659, className : "states.PlayState", methodName : "endSong"});
 				backend_Mods.loadTopMod();
 				states_PlayState.cancelMusicFadeTween();
 				if(flixel_addons_transition_FlxTransitionableState.skipNextTransIn) {
@@ -230116,10 +228804,10 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					newScript.destroy();
 					HxOverrides.remove(this.hscriptArray,newScript);
 					if(backend_ClientPrefs.isDebug()) {
-						haxe_Log.trace("failed to initialize sscript interp!!! (" + file + ")",{ fileName : "source/states/PlayState.hx", lineNumber : 6105, className : "states.PlayState", methodName : "initHScript"});
+						haxe_Log.trace("failed to initialize sscript interp!!! (" + file + ")",{ fileName : "source/states/PlayState.hx", lineNumber : 6115, className : "states.PlayState", methodName : "initHScript"});
 					}
 				} else if(backend_ClientPrefs.isDebug()) {
-					haxe_Log.trace("initialized sscript interp successfully: " + file,{ fileName : "source/states/PlayState.hx", lineNumber : 6107, className : "states.PlayState", methodName : "initHScript"});
+					haxe_Log.trace("initialized sscript interp successfully: " + file,{ fileName : "source/states/PlayState.hx", lineNumber : 6117, className : "states.PlayState", methodName : "initHScript"});
 				}
 			}
 		} catch( _g ) {
@@ -230560,7 +229248,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 							}
 							_gthis.updateScoreSID(sid[0],true);
 						};
-					})(player,sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6623, className : "states.PlayState", methodName : "registerMessages"});
+					})(player,sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6633, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(player,sid));
 			online_GameClient.callbacks.listen(player[0],"botplay",(function(sid) {
@@ -230572,7 +229260,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 							}
 							_gthis.showBotplay();
 						};
-					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6636, className : "states.PlayState", methodName : "registerMessages"});
+					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6646, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(sid));
 			online_GameClient.callbacks.listen(player[0],"noteHold",(function(sid) {
@@ -230586,7 +229274,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 								_gthis.characters.h[sid[0]].set_noteHold(value);
 							}
 						};
-					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6645, className : "states.PlayState", methodName : "registerMessages"});
+					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6655, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(sid));
 		}
@@ -230596,12 +229284,12 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 			}
 			online_backend_Waiter.put(function() {
 				_gthis.callOnScripts("onCustomMessage",message);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6659, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6669, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("log",function(message) {
 			online_backend_Waiter.putPersist(function() {
 				online_gui_Alert.alert("New message",online_util_ShitUtil.parseLog(message).content);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6665, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6675, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("strumPlay",function(_message) {
 			var sid = _message[0];
@@ -230622,7 +229310,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					spr.playAnim(Std.string(message[0]) + "",true);
 					spr.resetAnim = message[2];
 				}
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6676, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6686, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("charPlay",function(_message) {
 			var sid = _message[0];
@@ -230655,7 +229343,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 						}
 					}
 				}
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6699, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6709, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("noteHit",function(_message) {
 			var sid = _message[0];
@@ -230681,7 +229369,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.callOnHScript(message[6] ? "goodNoteHit" : "opponentNoteHit",[_gthis.notes.members[message[5]],_gthis.getCharPlayTag(message[6],sid)]);
 				_gthis.updateScoreSID(sid,false);
 				_gthis.getVocalsFromSIDVolume(sid,1);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6727, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6737, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("noteMiss",function(_message) {
 			var sid = _message[0];
@@ -230703,7 +229391,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.updateScoreSID(sid,true);
 				_gthis.getVocalsFromSIDVolume(sid,0);
 				_gthis.getPlayerStats(sid).combo = 0;
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6761, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6771, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("startSong",function(_) {
 			online_backend_Waiter.put(function() {
@@ -230713,7 +229401,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.isReady = true;
 				_gthis.set_waitReady(false);
 				_gthis.startCountdown();
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6788, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6798, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("endSong",function(_) {
 			online_backend_Waiter.put(function() {
@@ -230722,7 +229410,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				}
 				_gthis.canEndSongOnline = true;
 				_gthis.endSong();
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6799, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6809, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_objects_ChatBox.tryRegisterLogs();
 	}
@@ -231604,7 +230292,7 @@ states_TitleState.playFreakyMusic = function(volume,daSong) {
 					var path = backend_Paths.invalidChars.split(StringTools.replace(states_PlayState.SONG.song," ","-")).join("-");
 					var tmp1 = null;
 					var songKeyWeb = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Inst" + (tmp1 != null ? tmp1 : "");
-					tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : "songs:assets/songs/" + songKeyWeb + "." + "mp3",volume);
+					tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3"),volume);
 					states_TitleState.lastFreakyMusic = flixel_FlxG.sound.music._sound;
 					states_TitleState.lastSong = daSong;
 					return;
@@ -235480,92 +234168,15 @@ states_editors_ChartingState.prototype = $extend(backend_MusicBeatState.prototyp
 		}
 		this.trackSuffix = tmp ? "-erect" : "";
 		try {
-			var song = this.currentSongName;
-			var songSuffix = this.trackSuffix;
-			var voices = null;
-			try {
-				var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-				var tmp = songSuffix;
-				var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-				songKey += "-" + "Player";
-				var sound = backend_Paths.returnSound("songs",songKey);
-				if(sound == null || sound.get_length() <= 0) {
-					sound = null;
-				}
-				voices = sound;
-			} catch( _g ) {
-				voices = null;
-			}
-			var playerVocals = voices;
-			var tmp = this.vocals;
-			var tmp1;
-			if(playerVocals != null) {
-				tmp1 = playerVocals;
-			} else {
-				var song = this.currentSongName;
-				var postfix = null;
-				var songSuffix = this.trackSuffix;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp2 = songSuffix;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp2 != null ? tmp2 : "");
-					if(postfix != null) {
-						songKey += "-" + postfix;
-					}
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g ) {
-					voices = null;
-				}
-				tmp1 = voices;
-			}
-			tmp.loadEmbedded(tmp1);
-			var song = this.currentSongName;
-			var songSuffix = this.trackSuffix;
-			var voices = null;
-			try {
-				var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-				var tmp = songSuffix;
-				var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-				songKey += "-" + "Opponent";
-				var sound = backend_Paths.returnSound("songs",songKey);
-				if(sound == null || sound.get_length() <= 0) {
-					sound = null;
-				}
-				voices = sound;
-			} catch( _g ) {
-				voices = null;
-			}
-			var oppVocals = voices;
+			var playerVocals = backend_Paths.voices(this.currentSongName,"Player",this.trackSuffix);
+			this.vocals.loadEmbedded(playerVocals != null ? playerVocals : backend_Paths.voices(this.currentSongName,null,this.trackSuffix));
+			var oppVocals = backend_Paths.voices(this.currentSongName,"Opponent",this.trackSuffix);
 			if(oppVocals != null) {
 				this.opponentVocals.loadEmbedded(oppVocals);
 			}
 		} catch( _g ) {
 			haxe_NativeStackTrace.lastError = _g;
-			var song = this.currentSongName;
-			var postfix = null;
-			var songSuffix = this.trackSuffix;
-			var voices = null;
-			try {
-				var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-				var tmp = songSuffix;
-				var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-				if(postfix != null) {
-					songKey += "-" + postfix;
-				}
-				var sound = backend_Paths.returnSound("songs",songKey);
-				if(sound == null || sound.get_length() <= 0) {
-					sound = null;
-				}
-				voices = sound;
-			} catch( _g1 ) {
-				voices = null;
-			}
-			var file = voices;
+			var file = backend_Paths.voices(this.currentSongName,null,this.trackSuffix);
 			if(((file) instanceof openfl_media_Sound) || openfl_utils_Assets.exists(file)) {
 				this.vocals.loadEmbedded(file);
 			}
@@ -235624,7 +234235,7 @@ states_editors_ChartingState.prototype = $extend(backend_MusicBeatState.prototyp
 		var path = backend_Paths.invalidChars.split(StringTools.replace(this.currentSongName," ","-")).join("-");
 		var tmp1 = songSuffix;
 		var songKeyWeb = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Inst" + (tmp1 != null ? tmp1 : "");
-		tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : "songs:assets/songs/" + songKeyWeb + "." + "mp3",0.6);
+		tmp.playMusic(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3"),0.6);
 		flixel_FlxG.sound.music.autoDestroy = false;
 		if(this.instVolume != null) {
 			flixel_FlxG.sound.music.set_volume(this.instVolume.value);
@@ -239337,88 +237948,15 @@ states_editors_EditorPlayState.prototype = $extend(backend_MusicBeatSubstate.pro
 		this.opponentVocals = new flixel_sound_FlxSound();
 		if(songData.needsVoices) {
 			try {
-				var song = songData.song;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp = trackSuffix1;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-					songKey += "-" + "Player";
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g ) {
-					voices = null;
-				}
-				var playerVocals = voices;
-				var tmp = this.vocals;
-				var tmp1;
-				if(playerVocals != null) {
-					tmp1 = playerVocals;
-				} else {
-					var song = songData.song;
-					var postfix = null;
-					var voices = null;
-					try {
-						var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-						var tmp2 = trackSuffix1;
-						var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp2 != null ? tmp2 : "");
-						if(postfix != null) {
-							songKey += "-" + postfix;
-						}
-						var sound = backend_Paths.returnSound("songs",songKey);
-						if(sound == null || sound.get_length() <= 0) {
-							sound = null;
-						}
-						voices = sound;
-					} catch( _g ) {
-						voices = null;
-					}
-					tmp1 = voices;
-				}
-				tmp.loadEmbedded(tmp1);
-				var song = songData.song;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp = trackSuffix1;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-					songKey += "-" + "Opponent";
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g ) {
-					voices = null;
-				}
-				var oppVocals = voices;
+				var playerVocals = backend_Paths.voices(songData.song,"Player",trackSuffix1);
+				this.vocals.loadEmbedded(playerVocals != null ? playerVocals : backend_Paths.voices(songData.song,null,trackSuffix1));
+				var oppVocals = backend_Paths.voices(songData.song,"Opponent",trackSuffix1);
 				if(oppVocals != null) {
 					this.opponentVocals.loadEmbedded(oppVocals);
 				}
 			} catch( _g ) {
 				haxe_NativeStackTrace.lastError = _g;
-				var song = songData.song;
-				var postfix = null;
-				var voices = null;
-				try {
-					var path = backend_Paths.invalidChars.split(StringTools.replace(song," ","-")).join("-");
-					var tmp = trackSuffix1;
-					var songKey = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Voices" + (tmp != null ? tmp : "");
-					if(postfix != null) {
-						songKey += "-" + postfix;
-					}
-					var sound = backend_Paths.returnSound("songs",songKey);
-					if(sound == null || sound.get_length() <= 0) {
-						sound = null;
-					}
-					voices = sound;
-				} catch( _g1 ) {
-					voices = null;
-				}
-				var file = voices;
+				var file = backend_Paths.voices(songData.song,null,trackSuffix1);
 				if(((file) instanceof openfl_media_Sound) || openfl_utils_Assets.exists(file)) {
 					this.vocals.loadEmbedded(file);
 				}
@@ -239441,7 +237979,7 @@ states_editors_EditorPlayState.prototype = $extend(backend_MusicBeatSubstate.pro
 		var path = backend_Paths.invalidChars.split(StringTools.replace(songData.song," ","-")).join("-");
 		var tmp1 = trackSuffix1;
 		var songKeyWeb = "" + backend_Paths.hideChars.split(path).join("").toLowerCase() + "/Inst" + (tmp1 != null ? tmp1 : "");
-		this.inst = tmp.loadEmbedded(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : "songs:assets/songs/" + songKeyWeb + "." + "mp3");
+		this.inst = tmp.loadEmbedded(sys_FileSystem.exists(backend_Paths.modFolders("songs" + "/" + songKeyWeb + "." + "mp3")) ? backend_Paths.returnSound("songs",songKeyWeb) : backend_Paths.webSound("assets/songs/" + songKeyWeb + "." + "mp3"));
 		flixel_FlxG.sound.list.add(this.inst);
 		flixel_FlxG.sound.music.set_volume(0);
 		this.notes = new flixel_group_FlxTypedGroup();
@@ -246788,8 +245326,6 @@ var states_stages_objects_ABotSpeaker = function(x,y,addDarkSprite,isPixel) {
 		x = 0;
 	}
 	this.lookingAtRight = true;
-	this.prevBeat = 0;
-	this.levelMax = 0;
 	this.volumes = [];
 	this.vizSprites = [];
 	this.VIZ_MAX = 7;
@@ -247006,45 +245542,11 @@ states_stages_objects_ABotSpeaker.prototype = $extend(flixel_group_FlxTypedSprit
 	,darkSpeaker: null
 	,speaker: null
 	,speakerPixel: null
-	,analyzer: null
 	,volumes: null
 	,snd: null
 	,set_snd: function(changed) {
 		this.snd = changed;
-		this.initAnalyzer();
 		return this.snd;
-	}
-	,levels: null
-	,levelMax: null
-	,prevBeat: null
-	,update: function(elapsed) {
-		flixel_group_FlxTypedSpriteGroup.prototype.update.call(this,elapsed);
-		var curBeat = Math.floor(backend_Conductor.getBeat(backend_Conductor.songPosition));
-		if(flixel_FlxG.game._state == states_PlayState.instance && this.prevBeat != curBeat && curBeat % Math.round(states_PlayState.instance.gfSpeed * states_PlayState.instance.gf.danceEveryNumBeats) == 0) {
-			this.actualBeatHit();
-			this.prevBeat = curBeat;
-		}
-		if(this.analyzer == null) {
-			return;
-		}
-		this.levels = this.analyzer.getLevels(this.levels);
-		var oldLevelMax = this.levelMax;
-		this.levelMax = 0;
-		var _g = 0;
-		var _g1 = Math.min(this.vizSprites.length,this.levels.length) | 0;
-		while(_g < _g1) {
-			var i = _g++;
-			var animFrame = Math.round(this.levels[i].value * 5);
-			var lowerBound = animFrame < 0 ? 0 : animFrame;
-			animFrame = Math.abs((lowerBound > 5 ? 5 : lowerBound) - 5) | 0;
-			this.vizSprites[i].animation._curAnim.set_curFrame(animFrame);
-			this.levelMax = Math.max(this.levelMax,5 - animFrame) | 0;
-		}
-		if(this.levelMax >= 4) {
-			if(oldLevelMax <= this.levelMax && (this.levelMax >= 5 || this.getCurSpeakerFrame() >= 3)) {
-				this.bumpSpeaker();
-			}
-		}
 	}
 	,actualBeatHit: function() {
 		if(this.speakerPixel != null) {
@@ -247058,14 +245560,6 @@ states_stages_objects_ABotSpeaker.prototype = $extend(flixel_group_FlxTypedSprit
 		if(this.darkSpeaker != null) {
 			this.darkSpeaker.anim.play("anim",true);
 		}
-	}
-	,initAnalyzer: function() {
-		this.analyzer = new funkin_vis_dsp_SpectralAnalyzer(this.snd._channel.__audioSource,this.VIZ_MAX,0.1,40);
-		this.analyzer.set_minDb(-65);
-		this.analyzer.set_maxDb(-25);
-		this.analyzer.maxFreq = 22000;
-		this.analyzer.minFreq = 10;
-		this.analyzer.set_fftN(256);
 	}
 	,lookingAtRight: null
 	,lookLeft: function() {
@@ -255355,7 +253849,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "27c0ee7e14569da341ba254b7a3b43d480e819cb";
+Main.GIT_COMMIT = "96403bf997ad5bbd67708df03ee86f8bf9e17de4";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
@@ -257215,9 +255709,6 @@ openfl_geom_Matrix3D.__meta__ = { statics : { create2D : { SuppressWarnings : ["
 flxanimate_motion_AdjustColor.s_arrayOfDeltaIndex = [0,0.01,0.02,0.04,0.05,0.06,0.07,0.08,0.1,0.11,0.12,0.14,0.15,0.16,0.17,0.18,0.20,0.21,0.22,0.24,0.25,0.27,0.28,0.30,0.32,0.34,0.36,0.38,0.40,0.42,0.44,0.46,0.48,0.5,0.53,0.56,0.59,0.62,0.65,0.68,0.71,0.74,0.77,0.80,0.83,0.86,0.89,0.92,0.95,0.98,1.0,1.06,1.12,1.18,1.24,1.30,1.36,1.42,1.48,1.54,1.60,1.66,1.72,1.78,1.84,1.90,1.96,2.0,2.12,2.25,2.37,2.50,2.62,2.75,2.87,3.0,3.2,3.4,3.6,3.8,4.0,4.3,4.7,4.9,5.0,5.5,6.0,6.5,6.8,7.0,7.3,7.5,7.8,8.0,8.4,8.7,9.0,9.4,9.6,9.8,10.0];
 flxanimate_motion_DynamicMatrix.MATRIX_ORDER_PREPEND = 0;
 flxanimate_motion_DynamicMatrix.MATRIX_ORDER_APPEND = 1;
-funkin_vis_dsp_Complex.im = { real : 0, imag : 1};
-funkin_vis_dsp_Complex.zero = { real : 0, imag : 0};
-grig_audio_FFT.TWO_PI = 6.2831853;
 haxe_Serializer.USE_CACHE = false;
 haxe_Serializer.USE_ENUM_INDEX = false;
 haxe_Serializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";

@@ -128,10 +128,10 @@
 		<haxelib name="flxanimate" />
 		<haxelib name="actuate" />
 		<haxelib name="compiletime" />
-		<haxelib name="grig.audio" />
+		<haxelib name="grig.audio" unless="html5" />
 		<haxelib name="tink_core" />
 		<haxelib name="yagp" />
-		<haxelib name="funkin.vis" />
+		<haxelib name="funkin.vis" unless="html5" />
 	</section>
 
 	<section if="HSCRIPT_ALLOWED">

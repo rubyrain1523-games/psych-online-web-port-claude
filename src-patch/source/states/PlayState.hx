@@ -2483,6 +2483,9 @@ class PlayState extends MusicBeatState
 		vocals.play();
 		opponentVocals.play();
 
+		#if html5
+		new FlxTimer().start(6, function(_) trace('DBGVOX2 vplaying=' + vocals.playing + ' vvol=' + vocals.volume + ' vtime=' + vocals.time + ' vlen=' + vocals.length + ' mus=' + FlxG.sound.music.time + ' mvol=' + FlxG.sound.music.volume + ' oppPlaying=' + opponentVocals.playing + ' oppLen=' + opponentVocals.length + ' gvol=' + FlxG.sound.volume + ' muted=' + FlxG.sound.muted), 3);
+		#end
 		setSongTime(Math.max(0, startOnTime - 500));
 		startOnTime = 0;
 
@@ -2555,6 +2558,12 @@ class PlayState extends MusicBeatState
 			}
 		}
 
+		#if html5
+		trace('DBGVOC vocals.length=' + vocals.length + ' opp=' + opponentVocals.length);
+		#end
+		#if html5
+		trace('DBGVOX song=' + curSong + ' vocals=' + vocals.length + ' opp=' + opponentVocals.length + ' needs=' + songData.needsVoices + ' pv=' + Paths.voices(curSong, boyfriend.vocalsFile, songSuffix) + ' pv2=' + Paths.voices(curSong, null, songSuffix));
+		#end
 		#if FLX_PITCH
 		vocals.pitch = playbackRate;
 		opponentVocals.pitch = playbackRate;
@@ -2690,6 +2699,7 @@ class PlayState extends MusicBeatState
 
 		trace('Song Keys: ' + Note.maniaKeys + 'k');
 		#if html5
+		trace('VOICES len=' + vocals.length + ' opp=' + opponentVocals.length);
 		trace('DBGINST len=' + inst.length + ' dataNotes=' + dataNotes.length + ' noteDataSecs=' + noteData.length);
 		#end
 
