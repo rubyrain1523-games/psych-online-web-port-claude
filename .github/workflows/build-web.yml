@@ -73,7 +73,29 @@ jobs:
           while IFS= read -r lib; do
             [ -n "$lib" ] || continue
             echo "Installing Haxelib: $lib"
-            haxelib install "$lib"
+            case "$lib" in
+              funkin.vis)
+                haxelib git funkin.vis https://github.com/FunkinCrew/funkVis 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6
+                ;;
+              flxanimate)
+                haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate v4.0.0
+                ;;
+              grig.audio)
+                haxelib git grig.audio https://github.com/Snirozu/grig.audio 162f924bdde427fc84af5b51961d2faef51f6955
+                ;;
+              yagp)
+                haxelib git yagp https://github.com/Snirozu/yagp master
+                ;;
+              SScript)
+                haxelib git SScript https://github.com/Snirozu/SScript-7.7.0 main
+                ;;
+              linc_luajit|hxvlc|hxdiscord_rpc|hxtelemetry)
+                echo "Skipping non-HTML5 optional library: $lib"
+                ;;
+              *)
+                haxelib install "$lib"
+                ;;
+            esac
           done < /tmp/project-haxelibs.txt
 
       - name: Build HTML5 release
