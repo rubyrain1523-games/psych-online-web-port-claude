@@ -1,0 +1,5 @@
+Psych Online - Web build
+1. Extract this zip.
+2. Run:  python3 serve.py   (or start-server.bat on Windows)  then open http://localhost:8000
+   (any static web server works; opening index.html directly will not work)
+Mods: Online > Mod Downloader. Downloads are saved in the browser.
