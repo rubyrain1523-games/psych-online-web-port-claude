@@ -499,6 +499,9 @@ class Paths
 	}
 
 	public static var currentTrackedSounds:Map<String, Sound> = [];
+	#if html5
+	static var webModSounds:Map<String, Sound> = new Map();
+	#end
 	public static function returnSound(path:String, key:String, ?library:String) {
 		#if MODS_ALLOWED
 		var file:String = modsSounds(path, key);
@@ -506,7 +509,15 @@ class Paths
 			try {
 				if(!currentTrackedSounds.exists(file)) {
 					#if html5
-					currentTrackedSounds.set(file, Sound.fromAudioBuffer(lime.media.AudioBuffer.fromBytes(sys.io.File.getBytes(file))));
+					var _cached = webModSounds.get(file);
+					if (_cached == null) {
+						var _b = sys.io.File.getBytes(file);
+						var _ab = lime.media.AudioBuffer.fromBytes(_b);
+						untyped _ab.src.load();
+						_cached = Sound.fromAudioBuffer(_ab);
+						webModSounds.set(file, _cached);
+					}
+					currentTrackedSounds.set(file, _cached);
 					#else
 					currentTrackedSounds.set(file, Sound.fromFile(file));
 					#end

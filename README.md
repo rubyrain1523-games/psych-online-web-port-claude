@@ -7,3 +7,6 @@ Patches that build Friday Night Funkin' Psych Online (Snirozu/Funkin-Psych-Onlin
 - Build: `haxelib run lime build html5 -Dweb -nolaunch`.
 - Mods: Online → Mod Downloader; downloads persist in browser IndexedDB.
 - Not supported: Lua mods, videos, Discord, 3D stages, RAR/7z, raw-socket online play.
+
+## Download the playable build
+Get `PsychOnline-Web-full.zip` from the **Releases** page, extract it, run `python3 serve.py` (or `start-server.bat`) and open http://localhost:8000.

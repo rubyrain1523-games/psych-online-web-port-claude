@@ -83,7 +83,24 @@ class LoadingState extends MusicBeatState
 	function checkLoadSong(path:Dynamic)
 	{
 		if (!(path is String))
-			return; // already a loaded Sound (mod song)
+		{
+			// mod song (Sound object): in the browser its audio decodes asynchronously, wait until length is known
+			var snd:openfl.media.Sound = cast path;
+			if (snd != null && snd.length <= 0)
+			{
+				var cb = callbacks.add("modsong:" + Std.string(Math.random()));
+				var waited:Float = 0;
+				new FlxTimer().start(0.05, function(t:FlxTimer) {
+					waited += 0.05;
+					if (snd.length > 0 || waited > 15)
+					{
+						t.cancel();
+						cb();
+					}
+				}, 0);
+			}
+			return;
+		}
 		if (!Assets.cache.hasSound(path))
 		{
 			var library = Assets.getLibrary("songs");
@@ -188,7 +205,7 @@ class LoadingState extends MusicBeatState
 	static function isSoundLoaded(path:Dynamic):Bool
 	{
 		if (!(path is String))
-			return true;
+			return path == null || (cast path : openfl.media.Sound).length > 0;
 		return Assets.cache.hasSound(path);
 	}
 	
