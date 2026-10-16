@@ -317,6 +317,7 @@ class HTTPClient {
 			status = COMPLETED;
 		}
 		catch (exc) {
+			exc = new haxe.Exception('Could not reach ' + (address != null ? address.host : '?') + ' from the browser (blocked by the server\'s CORS rules, or the server is offline). ' + Std.string(exc));
 			trace('requestWeb failed: ' + exc + ' host=' + (address != null ? address.host + ':' + address.port : 'null') + ' path=' + (requestData != null ? requestData.path : 'null'));
 			response.exception = exc;
 			status = FAILED(exc);

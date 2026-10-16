@@ -26,5 +26,5 @@ with sync_playwright() as p:
     time.sleep(8); pg.screenshot(path=f'/home/claude/psych/{tag}3.png')
     for l in logs:
         if 'GL Driver' in l or 'Canvas2D' in l or '_volume' in l or l.startswith('Called'): continue
-        print(l[:300].replace('\n',' | '))
+        print(l[:3000].replace('\n',' | '))
     b.close()

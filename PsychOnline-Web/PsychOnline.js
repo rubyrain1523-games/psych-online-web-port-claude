@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "7";
+	app.meta.h["build"] = "8";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -3556,7 +3556,7 @@ Main.onCrash = function(exc,closeGame) {
 	if(closeGame == null) {
 		closeGame = true;
 	}
-	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 403, className : "Main", methodName : "onCrash"});
+	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 419, className : "Main", methodName : "onCrash"});
 	if(exc == null) {
 		exc = new haxe_Exception("Empty Uncaught Exception");
 	}
@@ -3641,6 +3641,54 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		if(this.hasEventListener("addedToStage")) {
 			this.removeEventListener("addedToStage",$bind(this,this.init));
 		}
+		try {
+			var _g = [];
+			var h = openfl_text_Font.__fontByName.h;
+			var k_h = h;
+			var k_keys = Object.keys(h);
+			var k_length = k_keys.length;
+			var k_current = 0;
+			while(k_current < k_length) {
+				var k = k_keys[k_current++];
+				_g.push(k);
+			}
+			var ks = _g;
+			haxe_Log.trace("FONTDBG registered=" + ks.join(",") + " default=" + flixel_system_FlxAssets.FONT_DEFAULT + " exists=" + Std.string(openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT")) + " name=" + (openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT") ? openfl_utils_Assets.getFont("assets/fonts/vcr.ttf").name : "n/a"),{ fileName : "source/Main.hx", lineNumber : 140, className : "Main", methodName : "init"});
+		} catch( _g ) {
+			haxe_NativeStackTrace.lastError = _g;
+			var e = haxe_Exception.caught(_g).unwrap();
+			haxe_Log.trace("FONTDBG err " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 140, className : "Main", methodName : "init"});
+		}
+		window.psychImportZip = function(name,data) {
+			try {
+				var base = online_util_FileUtils.formatFile(name.split(".")[0]);
+				if(!sys_FileSystem.exists("downloads/")) {
+					sys_FileSystem.createDirectory("downloads/");
+				}
+				var path = "downloads/" + base + ".dwl";
+				var bytes = new haxe_io_Bytes(new ArrayBuffer(data.length));
+				var _g = 0;
+				var _g1 = data.length;
+				while(_g < _g1) {
+					var i = _g++;
+					bytes.b[i] = data[i] & 255;
+				}
+				sys_io_File.saveBytes(path,bytes);
+				online_mods_OnlineMods.installMod(path,"local-import/" + base,null,null);
+				try {
+					if(sys_FileSystem.exists(path)) {
+						sys_FileSystem.deleteFile(path);
+					}
+				} catch( _g ) {
+				}
+			} catch( _g ) {
+				haxe_NativeStackTrace.lastError = _g;
+				var e = haxe_Exception.caught(_g).unwrap();
+				online_backend_Waiter.putPersist(function() {
+					online_gui_Alert.alert("Import failed!",Std.string(e));
+				},{ fileName : "source/Main.hx", lineNumber : 153, className : "Main", methodName : "init"});
+			}
+		};
 		window.psychSetting = function(k,v) {
 			backend_ClientPrefs.data.gameplaySettings.h[k] = v;
 		};
@@ -3701,7 +3749,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				online_network_FunkinNetwork.ping();
 			} catch( _g ) {
 				var exc = haxe_Exception.caught(_g);
-				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 328, className : "Main", methodName : "setupGame"});
+				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 344, className : "Main", methodName : "setupGame"});
 			}
 		},60,function(_) {
 		});
@@ -5844,6 +5892,7 @@ var _$_$ASSET_$_$assets_$fonts_$vcr_$ttf = $hx_exports["__ASSET__assets_fonts_vc
 	this.underlinePosition = -100;
 	this.underlineThickness = 50;
 	this.unitsPerEM = 1000;
+	this.name = "VCR OSD Mono";
 	lime_text_Font.call(this);
 };
 $hxClasses["__ASSET__assets_fonts_vcr_ttf"] = _$_$ASSET_$_$assets_$fonts_$vcr_$ttf;
@@ -5860,6 +5909,7 @@ var _$_$ASSET_$_$assets_$fonts_$pixel_$otf = $hx_exports["__ASSET__assets_fonts_
 	this.underlinePosition = -100;
 	this.underlineThickness = 50;
 	this.unitsPerEM = 1000;
+	this.name = "Pixel Arial 11 Bold";
 	lime_text_Font.call(this);
 };
 $hxClasses["__ASSET__assets_fonts_pixel_otf"] = _$_$ASSET_$_$assets_$fonts_$pixel_$otf;
@@ -5876,6 +5926,7 @@ var _$_$ASSET_$_$assets_$fonts_$notoemoji_$ttf = $hx_exports["__ASSET__assets_fo
 	this.underlinePosition = -100;
 	this.underlineThickness = 50;
 	this.unitsPerEM = 1000;
+	this.name = "Noto Emoji Regular";
 	lime_text_Font.call(this);
 };
 $hxClasses["__ASSET__assets_fonts_notoemoji_ttf"] = _$_$ASSET_$_$assets_$fonts_$notoemoji_$ttf;
@@ -5892,6 +5943,7 @@ var _$_$ASSET_$_$flixel_$fonts_$nokiafc22_$ttf = $hx_exports["__ASSET__flixel_fo
 	this.underlinePosition = -100;
 	this.underlineThickness = 50;
 	this.unitsPerEM = 1000;
+	this.name = "Nokia Cellphone FC Small";
 	lime_text_Font.call(this);
 };
 $hxClasses["__ASSET__flixel_fonts_nokiafc22_ttf"] = _$_$ASSET_$_$flixel_$fonts_$nokiafc22_$ttf;
@@ -5908,6 +5960,7 @@ var _$_$ASSET_$_$flixel_$fonts_$monsterrat_$ttf = $hx_exports["__ASSET__flixel_f
 	this.underlinePosition = -100;
 	this.underlineThickness = 50;
 	this.unitsPerEM = 1000;
+	this.name = "Monsterrat";
 	lime_text_Font.call(this);
 };
 $hxClasses["__ASSET__flixel_fonts_monsterrat_ttf"] = _$_$ASSET_$_$flixel_$fonts_$monsterrat_$ttf;
@@ -8269,10 +8322,16 @@ backend_ClientPrefs.isDebug = function() {
 	}
 };
 backend_ClientPrefs.getNickname = function() {
+	var name = null;
 	if(online_network_FunkinNetwork.loggedIn) {
-		return online_network_FunkinNetwork.nickname;
+		name = online_network_FunkinNetwork.nickname;
+	} else {
+		name = backend_ClientPrefs.data.nickname;
 	}
-	return backend_ClientPrefs.data.nickname;
+	if(name == null || StringTools.trim(name).length < 3) {
+		return "Boyfriend";
+	}
+	return name;
 };
 backend_ClientPrefs.setNickname = function(name) {
 	if(online_network_FunkinNetwork.loggedIn) {
@@ -11851,6 +11910,7 @@ backend_NoteTypesConfig.loadNoteTypeData = function(name) {
 	var str = backend_Paths.getTextFromFile("custom_notetypes/" + name + ".txt");
 	if(str == null || str.indexOf(":") == -1 || str.indexOf("=") == -1) {
 		backend_NoteTypesConfig.noteTypesData.h[name] = null;
+		return null;
 	}
 	var parsed = [];
 	var daList = [];
@@ -133262,7 +133322,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 820442;
+	this.version = 921374;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -148001,7 +148061,8 @@ online_http_HTTPClient.prototype = {
 			this.set_status(online_http_ClientStatus.COMPLETED);
 		} catch( _g ) {
 			var exc = haxe_Exception.caught(_g);
-			haxe_Log.trace("requestWeb failed: " + Std.string(exc) + " host=" + (this.address != null ? this.address.host + ":" + this.address.port : "null") + " path=" + (this.requestData != null ? this.requestData.path : "null"),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 320, className : "online.http.HTTPClient", methodName : "requestWeb"});
+			exc = new haxe_Exception("Could not reach " + (this.address != null ? this.address.host : "?") + " from the browser (blocked by the server's CORS rules, or the server is offline). " + Std.string(exc));
+			haxe_Log.trace("requestWeb failed: " + Std.string(exc) + " host=" + (this.address != null ? this.address.host + ":" + this.address.port : "null") + " path=" + (this.requestData != null ? this.requestData.path : "null"),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 321, className : "online.http.HTTPClient", methodName : "requestWeb"});
 			this.response.exception = exc;
 			this.set_status(online_http_ClientStatus.FAILED(exc));
 		}
@@ -148468,10 +148529,11 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 104, className : "online.mods.ModDownloader", methodName : "new"});
 			} else {
 				online_backend_Waiter.putPersist(function() {
-					var tmp = online_util_ShitUtil.prettyStatus(_gthis.client.response.status) + "\n";
-					var tmp1 = _gthis.client;
-					var tmp2 = tmp1 != null ? tmp1.response : null;
-					online_gui_Alert.alert("Downloading failed!",tmp + ((tmp2 != null ? tmp2.exception : null) != null ? online_util_ShitUtil.prettyError(_gthis.client.response.exception) : ""));
+					online_gui_Alert.alert("Downloading failed!","The browser blocked the direct download.\n" + "A new tab will download the file: save the .zip, then click \"Import mod (.zip)\" in the top-right corner of this page and pick it.");
+					try {
+						window.open(modURL,"_blank");
+					} catch( _g ) {
+					}
 				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 109, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 		} else {
@@ -253849,7 +253911,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "96403bf997ad5bbd67708df03ee86f8bf9e17de4";
+Main.GIT_COMMIT = "792aafa6e3960916ca0bef4ab1d971f02ddff174";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;

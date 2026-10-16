@@ -137,6 +137,22 @@ class Main extends Sprite
 
 		#if html5
 		// console helper: psychDownloadMod("https://.../mod.zip") downloads and installs a mod into the browser cache
+		try { @:privateAccess { var ks = [for (k in openfl.text.Font.__fontByName.keys()) k]; trace('FONTDBG registered=' + ks.join(',') + ' default=' + flixel.system.FlxAssets.FONT_DEFAULT + ' exists=' + openfl.utils.Assets.exists('assets/fonts/vcr.ttf', FONT) + ' name=' + (openfl.utils.Assets.exists('assets/fonts/vcr.ttf', FONT) ? openfl.utils.Assets.getFont('assets/fonts/vcr.ttf').name : 'n/a')); } } catch (e:Dynamic) { trace('FONTDBG err ' + e); }
+		js.Syntax.code("window.psychImportZip = {0}", (name:String, data:js.lib.Uint8Array) -> {
+			try {
+				var base = online.util.FileUtils.formatFile(name.split('.')[0]);
+				if (!sys.FileSystem.exists('downloads/')) sys.FileSystem.createDirectory('downloads/');
+				var path = 'downloads/' + base + '.dwl';
+				var bytes = haxe.io.Bytes.alloc(data.length);
+				for (i in 0...data.length) bytes.set(i, data[i]);
+				sys.io.File.saveBytes(path, bytes);
+				online.mods.OnlineMods.installMod(path, 'local-import/' + base, null, null);
+				try { if (sys.FileSystem.exists(path)) sys.FileSystem.deleteFile(path); } catch (_) {}
+			}
+			catch (e:Dynamic) {
+				online.backend.Waiter.putPersist(() -> { online.gui.Alert.alert('Import failed!', Std.string(e)); });
+			}
+		});
 		js.Syntax.code("window.psychSetting = {0}", (k:String, v:Dynamic) -> { ClientPrefs.data.gameplaySettings.set(k, v); });
 		js.Syntax.code("window.psychDownloadMod = {0}", (url:String) -> { new online.mods.ModDownloader(url.split('/').pop().split('?')[0], url); });
 		#end

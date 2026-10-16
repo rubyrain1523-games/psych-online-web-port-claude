@@ -107,10 +107,17 @@ class ModDownloader {
 				}
 				else {
 					Waiter.putPersist(() -> {
+						#if html5
+						Alert.alert('Downloading failed!', 
+							"The browser blocked the direct download.\n"
+							+ "A new tab will download the file: save the .zip, then click \"Import mod (.zip)\" in the top-right corner of this page and pick it.");
+						try { js.Browser.window.open(modURL, "_blank"); } catch (_) {}
+						#else
 						Alert.alert('Downloading failed!', 
 							ShitUtil.prettyStatus(client.response.status) + "\n" +
 							(client?.response?.exception != null ? ShitUtil.prettyError(client.response.exception) : '')
 						);
+						#end
 					});
 				}
 			}
