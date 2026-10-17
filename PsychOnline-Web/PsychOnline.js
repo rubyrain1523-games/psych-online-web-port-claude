@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "8";
+	app.meta.h["build"] = "9";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -3548,6 +3548,54 @@ Main.main = function() {
 	openfl_Lib.get_current().addChild(sideUI);
 	openfl_Lib.get_current().addChild(alertSprite);
 };
+Main.importZipBytes = function(name,data) {
+	try {
+		var base = online_util_FileUtils.formatFile(name.split(".")[0]);
+		if(!sys_FileSystem.exists("downloads/")) {
+			sys_FileSystem.createDirectory("downloads/");
+		}
+		var path = "downloads/" + base + ".dwl";
+		var bytes = new haxe_io_Bytes(new ArrayBuffer(data.length));
+		var _g = 0;
+		var _g1 = data.length;
+		while(_g < _g1) {
+			var i = _g++;
+			bytes.b[i] = data[i] & 255;
+		}
+		sys_io_File.saveBytes(path,bytes);
+		online_mods_OnlineMods.installMod(path,"local-import/" + base,null,null);
+		try {
+			if(sys_FileSystem.exists(path)) {
+				sys_FileSystem.deleteFile(path);
+			}
+		} catch( _g ) {
+		}
+	} catch( _g ) {
+		haxe_NativeStackTrace.lastError = _g;
+		var e = haxe_Exception.caught(_g).unwrap();
+		haxe_Log.trace("importZipBytes failed for " + name + ": " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 132, className : "Main", methodName : "importZipBytes"});
+	}
+};
+Main.installBootZips = function() {
+	try {
+		var zips = (window.__psychZips || []);
+		if(zips.length == 0) {
+			return;
+		}
+		window.__psychZips = [];
+		var _g = 0;
+		while(_g < zips.length) {
+			var z = zips[_g];
+			++_g;
+			haxe_Log.trace("Installing boot mod: " + Std.string(z.name),{ fileName : "source/Main.hx", lineNumber : 143, className : "Main", methodName : "installBootZips"});
+			Main.importZipBytes(z.name,z.data);
+		}
+	} catch( _g ) {
+		haxe_NativeStackTrace.lastError = _g;
+		var e = haxe_Exception.caught(_g).unwrap();
+		haxe_Log.trace("installBootZips failed: " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 148, className : "Main", methodName : "installBootZips"});
+	}
+};
 Main.resetSpriteCache = function(sprite) {
 	sprite.__cacheBitmap = null;
 	sprite.__cacheBitmapData = null;
@@ -3556,7 +3604,7 @@ Main.onCrash = function(exc,closeGame) {
 	if(closeGame == null) {
 		closeGame = true;
 	}
-	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 419, className : "Main", methodName : "onCrash"});
+	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 442, className : "Main", methodName : "onCrash"});
 	if(exc == null) {
 		exc = new haxe_Exception("Empty Uncaught Exception");
 	}
@@ -3653,41 +3701,19 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				_g.push(k);
 			}
 			var ks = _g;
-			haxe_Log.trace("FONTDBG registered=" + ks.join(",") + " default=" + flixel_system_FlxAssets.FONT_DEFAULT + " exists=" + Std.string(openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT")) + " name=" + (openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT") ? openfl_utils_Assets.getFont("assets/fonts/vcr.ttf").name : "n/a"),{ fileName : "source/Main.hx", lineNumber : 140, className : "Main", methodName : "init"});
+			haxe_Log.trace("FONTDBG registered=" + ks.join(",") + " default=" + flixel_system_FlxAssets.FONT_DEFAULT + " exists=" + Std.string(openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT")) + " name=" + (openfl_utils_Assets.exists("assets/fonts/vcr.ttf","FONT") ? openfl_utils_Assets.getFont("assets/fonts/vcr.ttf").name : "n/a"),{ fileName : "source/Main.hx", lineNumber : 176, className : "Main", methodName : "init"});
 		} catch( _g ) {
 			haxe_NativeStackTrace.lastError = _g;
 			var e = haxe_Exception.caught(_g).unwrap();
-			haxe_Log.trace("FONTDBG err " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 140, className : "Main", methodName : "init"});
+			haxe_Log.trace("FONTDBG err " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 176, className : "Main", methodName : "init"});
 		}
 		window.psychImportZip = function(name,data) {
-			try {
-				var base = online_util_FileUtils.formatFile(name.split(".")[0]);
-				if(!sys_FileSystem.exists("downloads/")) {
-					sys_FileSystem.createDirectory("downloads/");
-				}
-				var path = "downloads/" + base + ".dwl";
-				var bytes = new haxe_io_Bytes(new ArrayBuffer(data.length));
-				var _g = 0;
-				var _g1 = data.length;
-				while(_g < _g1) {
-					var i = _g++;
-					bytes.b[i] = data[i] & 255;
-				}
-				sys_io_File.saveBytes(path,bytes);
-				online_mods_OnlineMods.installMod(path,"local-import/" + base,null,null);
-				try {
-					if(sys_FileSystem.exists(path)) {
-						sys_FileSystem.deleteFile(path);
-					}
-				} catch( _g ) {
-				}
-			} catch( _g ) {
-				haxe_NativeStackTrace.lastError = _g;
-				var e = haxe_Exception.caught(_g).unwrap();
-				online_backend_Waiter.putPersist(function() {
-					online_gui_Alert.alert("Import failed!",Std.string(e));
-				},{ fileName : "source/Main.hx", lineNumber : 153, className : "Main", methodName : "init"});
-			}
+			Main.importZipBytes(name,data);
+		};
+		window.psychOpenVerify = function() {
+			flixel_FlxG.game._state.openSubState(new online_substates_VerifyCodeSubstate(function(code) {
+				haxe_Log.trace("VERIFYCODE entered: " + code,{ fileName : "source/Main.hx", lineNumber : 178, className : "Main", methodName : "init"});
+			}));
 		};
 		window.psychSetting = function(k,v) {
 			backend_ClientPrefs.data.gameplaySettings.h[k] = v;
@@ -3749,7 +3775,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				online_network_FunkinNetwork.ping();
 			} catch( _g ) {
 				var exc = haxe_Exception.caught(_g);
-				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 344, className : "Main", methodName : "setupGame"});
+				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 367, className : "Main", methodName : "setupGame"});
 			}
 		},60,function(_) {
 		});
@@ -133322,7 +133348,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 921374;
+	this.version = 540627;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -148529,7 +148555,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 104, className : "online.mods.ModDownloader", methodName : "new"});
 			} else {
 				online_backend_Waiter.putPersist(function() {
-					online_gui_Alert.alert("Downloading failed!","The browser blocked the direct download.\n" + "A new tab will download the file: save the .zip, then click \"Import mod (.zip)\" in the top-right corner of this page and pick it.");
+					online_gui_Alert.alert("Downloading failed!","The browser blocked the direct download.\n" + "A new tab will download the file. To install it, put the .zip in the repo's mods folder and reload the game.");
 					try {
 						window.open(modURL,"_blank");
 					} catch( _g ) {
@@ -230364,7 +230390,7 @@ states_TitleState.playFreakyMusic = function(volume,daSong) {
 			}
 		} catch( _g ) {
 			var exc = haxe_Exception.caught(_g);
-			haxe_Log.trace(exc,{ fileName : "source/states/TitleState.hx", lineNumber : 796, className : "states.TitleState", methodName : "playFreakyMusic"});
+			haxe_Log.trace(exc,{ fileName : "source/states/TitleState.hx", lineNumber : 799, className : "states.TitleState", methodName : "playFreakyMusic"});
 		}
 	}
 	backend_WeekData.setDirectoryFromWeek();
@@ -230396,8 +230422,9 @@ states_TitleState.prototype = $extend(backend_MusicBeatState.prototype,{
 		backend_Paths.clearStoredMemory();
 		backend_Paths.clearUnusedMemory();
 		haxe_Log.trace("DBG cleared",{ fileName : "source/states/TitleState.hx", lineNumber : 81, className : "states.TitleState", methodName : "create"});
+		Main.installBootZips();
 		backend_Mods.loadTopMod();
-		haxe_Log.trace("DBG loadTopMod done",{ fileName : "source/states/TitleState.hx", lineNumber : 87, className : "states.TitleState", methodName : "create"});
+		haxe_Log.trace("DBG loadTopMod done",{ fileName : "source/states/TitleState.hx", lineNumber : 90, className : "states.TitleState", methodName : "create"});
 		flixel_FlxG.fixedTimestep = false;
 		flixel_FlxG.game.focusLostFramerate = 60;
 		flixel_FlxG.keys.preventDefaultKeys = [9];
@@ -230409,16 +230436,16 @@ states_TitleState.prototype = $extend(backend_MusicBeatState.prototype,{
 		backend_Achievements.load();
 		backend_NoteSkinData.reloadNoteSkins();
 		backend_Highscore.load();
-		haxe_Log.trace("DBG before json",{ fileName : "source/states/TitleState.hx", lineNumber : 108, className : "states.TitleState", methodName : "create"});
+		haxe_Log.trace("DBG before json",{ fileName : "source/states/TitleState.hx", lineNumber : 111, className : "states.TitleState", methodName : "create"});
 		try {
 			var tx = backend_Paths.getTextFromFile("images/gfDanceTitle.json");
-			haxe_Log.trace("DBG got text " + (tx == null ? "null" : tx.length == null ? "null" : "" + tx.length),{ fileName : "source/states/TitleState.hx", lineNumber : 109, className : "states.TitleState", methodName : "create"});
+			haxe_Log.trace("DBG got text " + (tx == null ? "null" : tx.length == null ? "null" : "" + tx.length),{ fileName : "source/states/TitleState.hx", lineNumber : 112, className : "states.TitleState", methodName : "create"});
 			this.titleJSON = tjson_TJSON.parse(tx);
-			haxe_Log.trace("DBG parsed",{ fileName : "source/states/TitleState.hx", lineNumber : 109, className : "states.TitleState", methodName : "create"});
+			haxe_Log.trace("DBG parsed",{ fileName : "source/states/TitleState.hx", lineNumber : 112, className : "states.TitleState", methodName : "create"});
 		} catch( _g ) {
 			haxe_NativeStackTrace.lastError = _g;
 			var e = haxe_Exception.caught(_g).unwrap();
-			haxe_Log.trace("DBG EXC " + Std.string(e) + " " + haxe_CallStack.toString(haxe_CallStack.exceptionStack()),{ fileName : "source/states/TitleState.hx", lineNumber : 109, className : "states.TitleState", methodName : "create"});
+			haxe_Log.trace("DBG EXC " + Std.string(e) + " " + haxe_CallStack.toString(haxe_CallStack.exceptionStack()),{ fileName : "source/states/TitleState.hx", lineNumber : 112, className : "states.TitleState", methodName : "create"});
 		}
 		if(flixel_FlxG.save.data.psychDevsEasterEgg == null) {
 			flixel_FlxG.save.data.psychDevsEasterEgg = "";
@@ -230484,14 +230511,14 @@ states_TitleState.prototype = $extend(backend_MusicBeatState.prototype,{
 			this.startIntro();
 		} else {
 			new flixel_util_FlxTimer().start(1,function(tmr) {
-				haxe_Log.trace("DBG startIntro (timer)",{ fileName : "source/states/TitleState.hx", lineNumber : 166, className : "states.TitleState", methodName : "create"});
+				haxe_Log.trace("DBG startIntro (timer)",{ fileName : "source/states/TitleState.hx", lineNumber : 169, className : "states.TitleState", methodName : "create"});
 				try {
 					_gthis.startIntro();
-					haxe_Log.trace("DBG startIntro ok",{ fileName : "source/states/TitleState.hx", lineNumber : 167, className : "states.TitleState", methodName : "create"});
+					haxe_Log.trace("DBG startIntro ok",{ fileName : "source/states/TitleState.hx", lineNumber : 170, className : "states.TitleState", methodName : "create"});
 				} catch( _g ) {
 					haxe_NativeStackTrace.lastError = _g;
 					var e = haxe_Exception.caught(_g).unwrap();
-					haxe_Log.trace("DBG EXC intro " + Std.string(e) + " " + haxe_CallStack.toString(haxe_CallStack.exceptionStack()),{ fileName : "source/states/TitleState.hx", lineNumber : 167, className : "states.TitleState", methodName : "create"});
+					haxe_Log.trace("DBG EXC intro " + Std.string(e) + " " + haxe_CallStack.toString(haxe_CallStack.exceptionStack()),{ fileName : "source/states/TitleState.hx", lineNumber : 170, className : "states.TitleState", methodName : "create"});
 				}
 			});
 		}
@@ -253911,7 +253938,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "792aafa6e3960916ca0bef4ab1d971f02ddff174";
+Main.GIT_COMMIT = "c39bff9dd29363240cc03dc051883c2181d1a879";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;

@@ -80,6 +80,9 @@ class TitleState extends MusicBeatState
 		Paths.clearUnusedMemory();
 		trace('DBG cleared');
 
+		#if html5
+		Main.installBootZips();
+		#end
 		#if LUA_ALLOWED
 		Mods.pushGlobalMods();
 		#end

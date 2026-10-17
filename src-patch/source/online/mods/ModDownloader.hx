@@ -110,7 +110,7 @@ class ModDownloader {
 						#if html5
 						Alert.alert('Downloading failed!', 
 							"The browser blocked the direct download.\n"
-							+ "A new tab will download the file: save the .zip, then click \"Import mod (.zip)\" in the top-right corner of this page and pick it.");
+							+ "A new tab will download the file. To install it, put the .zip in the repo's mods folder and reload the game.");
 						try { js.Browser.window.open(modURL, "_blank"); } catch (_) {}
 						#else
 						Alert.alert('Downloading failed!', 
