@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "9";
+	app.meta.h["build"] = "10";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -101022,6 +101022,204 @@ haxe_exceptions_NotImplementedException.__super__ = haxe_exceptions_PosException
 haxe_exceptions_NotImplementedException.prototype = $extend(haxe_exceptions_PosException.prototype,{
 	__class__: haxe_exceptions_NotImplementedException
 });
+var haxe_format_JsonPrinter = function(replacer,space) {
+	this.replacer = replacer;
+	this.indent = space;
+	this.pretty = space != null;
+	this.nind = 0;
+	this.buf = new StringBuf();
+};
+$hxClasses["haxe.format.JsonPrinter"] = haxe_format_JsonPrinter;
+haxe_format_JsonPrinter.__name__ = "haxe.format.JsonPrinter";
+haxe_format_JsonPrinter.print = function(o,replacer,space) {
+	var printer = new haxe_format_JsonPrinter(replacer,space);
+	printer.write("",o);
+	return printer.buf.b;
+};
+haxe_format_JsonPrinter.prototype = {
+	buf: null
+	,replacer: null
+	,indent: null
+	,pretty: null
+	,nind: null
+	,write: function(k,v) {
+		if(this.replacer != null) {
+			v = this.replacer(k,v);
+		}
+		var _g = Type.typeof(v);
+		switch(_g._hx_index) {
+		case 0:
+			this.buf.b += "null";
+			break;
+		case 1:
+			this.buf.b += Std.string(v);
+			break;
+		case 2:
+			var v1 = isFinite(v) ? Std.string(v) : "null";
+			this.buf.b += Std.string(v1);
+			break;
+		case 3:
+			this.buf.b += Std.string(v);
+			break;
+		case 4:
+			this.fieldsString(v,Reflect.fields(v));
+			break;
+		case 5:
+			this.buf.b += "\"<fun>\"";
+			break;
+		case 6:
+			var c = _g.c;
+			if(c == String) {
+				this.quote(v);
+			} else if(c == Array) {
+				var v1 = v;
+				this.buf.b += String.fromCodePoint(91);
+				var len = v1.length;
+				var last = len - 1;
+				var _g1 = 0;
+				var _g2 = len;
+				while(_g1 < _g2) {
+					var i = _g1++;
+					if(i > 0) {
+						this.buf.b += String.fromCodePoint(44);
+					} else {
+						this.nind++;
+					}
+					if(this.pretty) {
+						this.buf.b += String.fromCodePoint(10);
+					}
+					if(this.pretty) {
+						var v2 = StringTools.lpad("",this.indent,this.nind * this.indent.length);
+						this.buf.b += Std.string(v2);
+					}
+					this.write(i,v1[i]);
+					if(i == last) {
+						this.nind--;
+						if(this.pretty) {
+							this.buf.b += String.fromCodePoint(10);
+						}
+						if(this.pretty) {
+							var v3 = StringTools.lpad("",this.indent,this.nind * this.indent.length);
+							this.buf.b += Std.string(v3);
+						}
+					}
+				}
+				this.buf.b += String.fromCodePoint(93);
+			} else if(c == haxe_ds_StringMap) {
+				var v1 = v;
+				var o = { };
+				var h = v1.h;
+				var _g_h = h;
+				var _g_keys = Object.keys(h);
+				var _g_length = _g_keys.length;
+				var _g_current = 0;
+				while(_g_current < _g_length) {
+					var k = _g_keys[_g_current++];
+					o[k] = v1.h[k];
+				}
+				var v1 = o;
+				this.fieldsString(v1,Reflect.fields(v1));
+			} else if(c == Date) {
+				var v1 = v;
+				this.quote(HxOverrides.dateStr(v1));
+			} else {
+				this.classString(v);
+			}
+			break;
+		case 7:
+			var _g1 = _g.e;
+			var i = v._hx_index;
+			this.buf.b += Std.string(i == null ? "null" : "" + i);
+			break;
+		case 8:
+			this.buf.b += "\"???\"";
+			break;
+		}
+	}
+	,classString: function(v) {
+		this.fieldsString(v,Type.getInstanceFields(js_Boot.getClass(v)));
+	}
+	,fieldsString: function(v,fields) {
+		this.buf.b += String.fromCodePoint(123);
+		var len = fields.length;
+		var empty = true;
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var i = _g++;
+			var f = fields[i];
+			var value = Reflect.field(v,f);
+			if(Reflect.isFunction(value)) {
+				continue;
+			}
+			if(empty) {
+				this.nind++;
+				empty = false;
+			} else {
+				this.buf.b += String.fromCodePoint(44);
+			}
+			if(this.pretty) {
+				this.buf.b += String.fromCodePoint(10);
+			}
+			if(this.pretty) {
+				var v1 = StringTools.lpad("",this.indent,this.nind * this.indent.length);
+				this.buf.b += Std.string(v1);
+			}
+			this.quote(f);
+			this.buf.b += String.fromCodePoint(58);
+			if(this.pretty) {
+				this.buf.b += String.fromCodePoint(32);
+			}
+			this.write(f,value);
+		}
+		if(!empty) {
+			this.nind--;
+			if(this.pretty) {
+				this.buf.b += String.fromCodePoint(10);
+			}
+			if(this.pretty) {
+				var v = StringTools.lpad("",this.indent,this.nind * this.indent.length);
+				this.buf.b += Std.string(v);
+			}
+		}
+		this.buf.b += String.fromCodePoint(125);
+	}
+	,quote: function(s) {
+		this.buf.b += String.fromCodePoint(34);
+		var i = 0;
+		var length = s.length;
+		while(i < length) {
+			var c = s.charCodeAt(i++);
+			switch(c) {
+			case 8:
+				this.buf.b += "\\b";
+				break;
+			case 9:
+				this.buf.b += "\\t";
+				break;
+			case 10:
+				this.buf.b += "\\n";
+				break;
+			case 12:
+				this.buf.b += "\\f";
+				break;
+			case 13:
+				this.buf.b += "\\r";
+				break;
+			case 34:
+				this.buf.b += "\\\"";
+				break;
+			case 92:
+				this.buf.b += "\\\\";
+				break;
+			default:
+				this.buf.b += String.fromCodePoint(c);
+			}
+		}
+		this.buf.b += String.fromCodePoint(34);
+	}
+	,__class__: haxe_format_JsonPrinter
+};
 var haxe_http_HttpBase = function(url) {
 	this.url = url;
 	this.headers = [];
@@ -116111,7 +116309,7 @@ io_colyseus_HTTP.prototype = {
 		var body = "";
 		var h = new haxe_http_HttpJs(this.buildHttpEndpoint(segments));
 		if(options != null && options.body != null) {
-			body = typeof(options.body) == "string" ? options.body : JSON.stringify(options.body);
+			body = typeof(options.body) == "string" ? options.body : haxe_format_JsonPrinter.print(options.body);
 			h.setHeader("Content-Type","application/json");
 			h.setPostData(body);
 		}
@@ -133348,7 +133546,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 540627;
+	this.version = 835658;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -150627,6 +150825,8 @@ var online_objects_InputText = function(x,y,width,onEnter) {
 	flixel_addons_ui_FlxInputText.call(this,x,y,width | 0);
 	this.set_backgroundColor(0);
 	this.set_fieldBorderColor(0);
+	this.background = false;
+	this.set_fieldBorderThickness(0);
 	this.set_caretColor(-1);
 	var prevText = "";
 	this.callback = function(text,action) {
@@ -253938,7 +254138,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "c39bff9dd29363240cc03dc051883c2181d1a879";
+Main.GIT_COMMIT = "001538b6c6795f481ffab4741901db79bf52bee1";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
