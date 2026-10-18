@@ -70,6 +70,6 @@ function __psychBoot(go0) {
 }
 </script>
 '''
-s=s.replace('<script type="text/javascript" src="./PsychOnline.js"></script>', boot+'<script type="text/javascript" src="./PsychOnline.js"></script>',1)
+s=s.replace('<script type="text/javascript" src="./PsychOnline.js"></script>', boot+'<script type="text/javascript" src="./PsychOnline.js?v='+str(int(__import__('time').time()))+'"></script>',1)
 s=re.sub(r'lime\.embed \("PsychOnline", "openfl-content", 1280, 720, \{ parameters: \{\} \}\);', '__psychBoot(function() { lime.embed ("PsychOnline", "openfl-content", 1280, 720, { parameters: {} }); });', s)
 open(p,'w').write(s)

@@ -272,6 +272,8 @@ class HTTPClient {
 
 	#if html5
 	/** Browser version: uses a synchronous XMLHttpRequest instead of raw sockets. Subject to the site's CORS rules. */
+	public var allowProxy:Bool = false;
+
 	function requestWeb():HTTPResponse {
 		try {
 			var path = requestData.path;
@@ -280,15 +282,28 @@ class HTTPClient {
 			var url = (address.ssl ? "https://" : "http://") + address.host
 				+ (address.port != 80 && address.port != 443 ? ":" + address.port : "") + path;
 
-			var x = new js.html.XMLHttpRequest();
-			x.open(requestData.post ? "POST" : "GET", url, false);
-			x.overrideMimeType("text/plain; charset=x-user-defined");
-			if (requestData.headers != null)
-				for (key => value in requestData.headers) {
-					try x.setRequestHeader(key, value) catch (_) {}
-				}
-			status = READING_HEADERS;
-			x.send(requestData.body);
+			// Mod downloads: the browser blocks cross-origin files without CORS headers, so fall back to public CORS relays (downloads only, never logins)
+			var candidates = [url];
+			if (allowProxy && !requestData.post) {
+				var enc:String = js.Syntax.code("encodeURIComponent({0})", url);
+				candidates.push("https://corsproxy.io/?url=" + enc);
+				candidates.push("https://api.allorigins.win/raw?url=" + enc);
+			}
+			var x:js.html.XMLHttpRequest = null;
+			for (u in candidates) {
+				x = new js.html.XMLHttpRequest();
+				x.open(requestData.post ? "POST" : "GET", u, false);
+				x.overrideMimeType("text/plain; charset=x-user-defined");
+				if (requestData.headers != null && u == url)
+					for (key => value in requestData.headers) {
+						try x.setRequestHeader(key, value) catch (_) {}
+					}
+				status = READING_HEADERS;
+				try x.send(requestData.body) catch (_) {}
+				if (x.status >= 200 && x.status < 300)
+					break;
+				trace('request failed via ' + u + ' status=' + x.status);
+			}
 
 			response.headers = new Map<String, String>();
 			for (line in x.getAllResponseHeaders().split("\r\n")) {

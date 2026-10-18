@@ -49,6 +49,9 @@ class ModDownloader {
 		}
 
 		client = new HTTPClient(modURL);
+		#if html5
+		client.allowProxy = true;
+		#end
 		alert = new DownloadAlert(url);
 
 		client.onStatus = v -> {

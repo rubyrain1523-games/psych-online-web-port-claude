@@ -65,11 +65,14 @@ class GameClient {
 		ChatBox.clearLogs();
 		
 		Thread.run(() -> {
+			trace('DBGJ thread start');
 			client = new Client(address);
 			_pendingMessages = [];
+			trace('DBGJ client made');
 
 			client.create("room", getOptions(true, address), GameRoom, (err, room) -> _onJoin(err, room, true, address, onJoin));
 		}, (exc) -> {
+			trace('DBGJ exc ' + exc.details());
 			onJoin(exc);
 			LoadingScreen.toggle(false);
 			trace(exc.details());

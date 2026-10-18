@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "10";
+	app.meta.h["build"] = "11";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -3604,7 +3604,7 @@ Main.onCrash = function(exc,closeGame) {
 	if(closeGame == null) {
 		closeGame = true;
 	}
-	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 442, className : "Main", methodName : "onCrash"});
+	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 443, className : "Main", methodName : "onCrash"});
 	if(exc == null) {
 		exc = new haxe_Exception("Empty Uncaught Exception");
 	}
@@ -3715,6 +3715,19 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				haxe_Log.trace("VERIFYCODE entered: " + code,{ fileName : "source/Main.hx", lineNumber : 178, className : "Main", methodName : "init"});
 			}));
 		};
+		window.psychJoinTest = function(addr) {
+			haxe_Log.trace("JOINTEST start " + addr,{ fileName : "source/Main.hx", lineNumber : 179, className : "Main", methodName : "init"});
+			try {
+				online_GameClient.createRoom(addr,function(e) {
+					haxe_Log.trace("JOINRES " + e,{ fileName : "source/Main.hx", lineNumber : 179, className : "Main", methodName : "init"});
+				});
+				haxe_Log.trace("JOINTEST returned",{ fileName : "source/Main.hx", lineNumber : 179, className : "Main", methodName : "init"});
+			} catch( _g ) {
+				haxe_NativeStackTrace.lastError = _g;
+				var e = haxe_Exception.caught(_g).unwrap();
+				haxe_Log.trace("JOINTEST threw " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 179, className : "Main", methodName : "init"});
+			}
+		};
 		window.psychSetting = function(k,v) {
 			backend_ClientPrefs.data.gameplaySettings.h[k] = v;
 		};
@@ -3775,7 +3788,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				online_network_FunkinNetwork.ping();
 			} catch( _g ) {
 				var exc = haxe_Exception.caught(_g);
-				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 367, className : "Main", methodName : "setupGame"});
+				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 368, className : "Main", methodName : "setupGame"});
 			}
 		},60,function(_) {
 		});
@@ -116059,8 +116072,18 @@ io_colyseus_Client.prototype = {
 			}
 		});
 	}
+	,joinById_online_backend_schema_Room: function(roomId,options,stateClass,callback) {
+		this.createMatchMakeRequest_joinById_T("joinById",roomId,options,stateClass,callback);
+	}
 	,create_online_backend_schema_Room: function(roomName,options,stateClass,callback) {
 		this.createMatchMakeRequest_create_T("create",roomName,options,stateClass,callback);
+	}
+	,reconnect_online_backend_schema_Room: function(reconnectionToken,stateClass,callback) {
+		var roomIdAndReconnectionToken = reconnectionToken.split(":");
+		var roomIdAndReconnectionToken1 = roomIdAndReconnectionToken[0];
+		var _g = new haxe_ds_StringMap();
+		_g.h["reconnectionToken"] = roomIdAndReconnectionToken[1];
+		this.createMatchMakeRequest_reconnect_T("reconnect",roomIdAndReconnectionToken1,_g,stateClass,callback);
 	}
 	,createMatchMakeRequest_create_T: function(method,roomName,options,stateClass,callback) {
 		var _gthis = this;
@@ -116075,16 +116098,6 @@ io_colyseus_Client.prototype = {
 				_gthis.consumeSeatReservation_createMatchMakeRequest_T(response,stateClass,callback);
 			}
 		});
-	}
-	,joinById_online_backend_schema_Room: function(roomId,options,stateClass,callback) {
-		this.createMatchMakeRequest_joinById_T("joinById",roomId,options,stateClass,callback);
-	}
-	,reconnect_online_backend_schema_Room: function(reconnectionToken,stateClass,callback) {
-		var roomIdAndReconnectionToken = reconnectionToken.split(":");
-		var roomIdAndReconnectionToken1 = roomIdAndReconnectionToken[0];
-		var _g = new haxe_ds_StringMap();
-		_g.h["reconnectionToken"] = roomIdAndReconnectionToken[1];
-		this.createMatchMakeRequest_reconnect_T("reconnect",roomIdAndReconnectionToken1,_g,stateClass,callback);
 	}
 	,joinById_online_backend_schema_NetworkSchema: function(roomId,options,stateClass,callback) {
 		this.createMatchMakeRequest_joinById_T("joinById",roomId,options,stateClass,callback);
@@ -133546,7 +133559,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 835658;
+	this.version = 654825;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -142369,15 +142382,18 @@ online_GameClient.createRoom = function(address,onJoin) {
 	online_GameClient.leaveRoom("Switching Rooms.");
 	online_objects_ChatBox.clearLogs();
 	online_backend_Thread.run(function() {
+		haxe_Log.trace("DBGJ thread start",{ fileName : "source/online/GameClient.hx", lineNumber : 68, className : "online.GameClient", methodName : "createRoom"});
 		online_GameClient.client = new io_colyseus_Client(address);
 		online_GameClient._pendingMessages = [];
+		haxe_Log.trace("DBGJ client made",{ fileName : "source/online/GameClient.hx", lineNumber : 71, className : "online.GameClient", methodName : "createRoom"});
 		online_GameClient.client.create_online_backend_schema_Room("room",online_GameClient.getOptions(true,address),online_backend_schema_Room,function(err,room) {
 			online_GameClient._onJoin(err,room,true,address,onJoin);
 		});
 	},function(exc) {
+		haxe_Log.trace("DBGJ exc " + exc.details(),{ fileName : "source/online/GameClient.hx", lineNumber : 75, className : "online.GameClient", methodName : "createRoom"});
 		onJoin(exc);
 		online_gui_LoadingScreen.toggle(false);
-		haxe_Log.trace(exc.details(),{ fileName : "source/online/GameClient.hx", lineNumber : 75, className : "online.GameClient", methodName : "createRoom"});
+		haxe_Log.trace(exc.details(),{ fileName : "source/online/GameClient.hx", lineNumber : 78, className : "online.GameClient", methodName : "createRoom"});
 		online_gui_Alert.alert("Failed to connect!",exc.details());
 	});
 };
@@ -142404,13 +142420,13 @@ online_GameClient.joinRoom = function(roomSecret,onJoin) {
 	},function(exc) {
 		onJoin(exc);
 		online_gui_LoadingScreen.toggle(false);
-		haxe_Log.trace(exc.details(),{ fileName : "source/online/GameClient.hx", lineNumber : 105, className : "online.GameClient", methodName : "joinRoom"});
+		haxe_Log.trace(exc.details(),{ fileName : "source/online/GameClient.hx", lineNumber : 108, className : "online.GameClient", methodName : "joinRoom"});
 		online_gui_Alert.alert("Failed to connect!",exc.toString());
 	});
 };
 online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 	if(err != null) {
-		haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 112, className : "online.GameClient", methodName : "_onJoin"});
+		haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 115, className : "online.GameClient", methodName : "_onJoin"});
 		online_gui_Alert.alert("Couldn't connect!","JOIN ERROR: " + online_util_ShitUtil.prettyStatus(err.code) + "\n" + online_util_ShitUtil.readableError(err.message));
 		onJoin(err);
 		online_GameClient.leaveRoom();
@@ -142430,7 +142446,7 @@ online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 						}
 					});
 				}
-			},{ fileName : "source/online/GameClient.hx", lineNumber : 118, className : "online.GameClient", methodName : "_onJoin"});
+			},{ fileName : "source/online/GameClient.hx", lineNumber : 121, className : "online.GameClient", methodName : "_onJoin"});
 		}
 		return;
 	}
@@ -142448,11 +142464,11 @@ online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 		online_gui_Alert.alert("Room error!","room.onError: " + online_util_ShitUtil.prettyStatus(code) + "\n" + online_util_ShitUtil.readableError(e));
 	});
 	online_GameClient.room.onLeave.push(function(code) {
-		haxe_Log.trace(code,{ fileName : "source/online/GameClient.hx", lineNumber : 139, className : "online.GameClient", methodName : "_onJoin"});
+		haxe_Log.trace(code,{ fileName : "source/online/GameClient.hx", lineNumber : 142, className : "online.GameClient", methodName : "_onJoin"});
 		if((room != null ? room.roomId : null) != null) {
-			haxe_Log.trace("Left/Kicked from room: " + room.roomId,{ fileName : "source/online/GameClient.hx", lineNumber : 141, className : "online.GameClient", methodName : "_onJoin"});
+			haxe_Log.trace("Left/Kicked from room: " + room.roomId,{ fileName : "source/online/GameClient.hx", lineNumber : 144, className : "online.GameClient", methodName : "_onJoin"});
 		} else {
-			haxe_Log.trace("Left/Kicked from unknown room!",{ fileName : "source/online/GameClient.hx", lineNumber : 143, className : "online.GameClient", methodName : "_onJoin"});
+			haxe_Log.trace("Left/Kicked from unknown room!",{ fileName : "source/online/GameClient.hx", lineNumber : 146, className : "online.GameClient", methodName : "_onJoin"});
 		}
 		if(online_GameClient.client == null) {
 			online_GameClient.leaveRoom();
@@ -142463,7 +142479,7 @@ online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 	online_backend_Waiter.putPersist(function() {
 		var tries = 50;
 		while(online_GameClient.getPlayerSelf() == null) {
-			haxe_Log.trace(online_GameClient.getPlayerSelf() == null,{ fileName : "source/online/GameClient.hx", lineNumber : 157, className : "online.GameClient", methodName : "_onJoin"});
+			haxe_Log.trace(online_GameClient.getPlayerSelf() == null,{ fileName : "source/online/GameClient.hx", lineNumber : 160, className : "online.GameClient", methodName : "_onJoin"});
 			if(tries-- < 0) {
 				online_gui_Alert.alert("Couldn't connect!","Client couldn't receive server's state data!");
 				onJoin(new io_colyseus_error_HttpException(-1,"no state data"));
@@ -142473,12 +142489,12 @@ online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 			}
 			Sys.sleep(0.2);
 		}
-		haxe_Log.trace("Joined!",{ fileName : "source/online/GameClient.hx", lineNumber : 168, className : "online.GameClient", methodName : "_onJoin"});
+		haxe_Log.trace("Joined!",{ fileName : "source/online/GameClient.hx", lineNumber : 171, className : "online.GameClient", methodName : "_onJoin"});
 		flixel_FlxG.autoPause = false;
 		if(onJoin != null) {
 			onJoin(null);
 		}
-	},{ fileName : "source/online/GameClient.hx", lineNumber : 153, className : "online.GameClient", methodName : "_onJoin"});
+	},{ fileName : "source/online/GameClient.hx", lineNumber : 156, className : "online.GameClient", methodName : "_onJoin"});
 	online_backend_Waiter.pingServer = address;
 };
 online_GameClient.reconnect = function(debugReconnectDelay) {
@@ -142494,7 +142510,7 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 		return;
 	}
 	var reconnectToken = online_GameClient.room.reconnectionToken;
-	haxe_Log.trace("Reconnecting with Token: " + reconnectToken,{ fileName : "source/online/GameClient.hx", lineNumber : 195, className : "online.GameClient", methodName : "reconnect"});
+	haxe_Log.trace("Reconnecting with Token: " + reconnectToken,{ fileName : "source/online/GameClient.hx", lineNumber : 198, className : "online.GameClient", methodName : "reconnect"});
 	online_gui_Alert.alert("Reconnecting...");
 	try {
 		online_GameClient.room.teardown();
@@ -142515,10 +142531,10 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 					return;
 				}
 				if(err != null) {
-					haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 217, className : "online.GameClient", methodName : "reconnect"});
+					haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 220, className : "online.GameClient", methodName : "reconnect"});
 					online_backend_Waiter.putPersist(function() {
 						online_gui_Alert.alert("Couldn't reconnect!","RECONNECT ERROR: " + online_util_ShitUtil.prettyStatus(err.code) + " - " + online_util_ShitUtil.readableError(err.message));
-					},{ fileName : "source/online/GameClient.hx", lineNumber : 218, className : "online.GameClient", methodName : "reconnect"});
+					},{ fileName : "source/online/GameClient.hx", lineNumber : 221, className : "online.GameClient", methodName : "reconnect"});
 					online_GameClient.leaveRoom();
 					return;
 				}
@@ -142531,12 +142547,12 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 					online_GameClient.sendPending();
 					online_backend_Waiter.putPersist(function() {
 						online_gui_Alert.alert("Reconnected!");
-					},{ fileName : "source/online/GameClient.hx", lineNumber : 232, className : "online.GameClient", methodName : "reconnect"});
+					},{ fileName : "source/online/GameClient.hx", lineNumber : 235, className : "online.GameClient", methodName : "reconnect"});
 				});
 			} catch( _g ) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Critically failed to reconnect!","RECONNECT ERROR: " + online_util_ShitUtil.prettyStatus(err.code) + " - " + online_util_ShitUtil.readableError(err.message));
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 238, className : "online.GameClient", methodName : "reconnect"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 241, className : "online.GameClient", methodName : "reconnect"});
 				online_GameClient.leaveRoom();
 			}
 		});
@@ -142582,7 +142598,7 @@ online_GameClient.leaveRoom = function(reason) {
 		if(reason != null) {
 			online_gui_Alert.alert("Disconnected!",StringTools.trim(reason) != "" ? reason : null);
 		}
-		haxe_Log.trace("Leaving the Room, Reason: " + reason,{ fileName : "source/online/GameClient.hx", lineNumber : 288, className : "online.GameClient", methodName : "leaveRoom"});
+		haxe_Log.trace("Leaving the Room, Reason: " + reason,{ fileName : "source/online/GameClient.hx", lineNumber : 291, className : "online.GameClient", methodName : "leaveRoom"});
 		flixel_FlxG.autoPause = backend_ClientPrefs.data.autoPause;
 		if(flixel_FlxG.game._nextState == null) {
 			var nextState = flixel_util_typeLimit_NextState.fromMaker(function() {
@@ -142612,7 +142628,7 @@ online_GameClient.leaveRoom = function(reason) {
 		online_GameClient.set_room(null);
 		online_GameClient.address = null;
 		online_GameClient.rpcClientRoomID = null;
-	},{ fileName : "source/online/GameClient.hx", lineNumber : 285, className : "online.GameClient", methodName : "leaveRoom"});
+	},{ fileName : "source/online/GameClient.hx", lineNumber : 288, className : "online.GameClient", methodName : "leaveRoom"});
 };
 online_GameClient.isConnected = function() {
 	if(online_GameClient.client == null) {
@@ -142686,7 +142702,7 @@ online_GameClient.clearOnMessage = function() {
 				});
 			}
 			flixel_FlxG.sound.music.set_volume(0);
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 365, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 368, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 	online_GameClient.room.onMessage("alert",function(message) {
 		if(message == null) {
@@ -142715,13 +142731,13 @@ online_GameClient.clearOnMessage = function() {
 			} else {
 				online_GameClient.send("setSkin",null);
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 401, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 404, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 	online_GameClient.room.onMessage("checkChart",function(message) {
 		online_backend_Waiter.putPersist(function() {
 			try {
 				var hash = haxe_crypto_Md5.encode(backend_Song.loadRawSong(online_GameClient.room.get_state().song,online_GameClient.room.get_state().folder));
-				haxe_Log.trace("verifying song: " + online_GameClient.room.get_state().song + " | " + online_GameClient.room.get_state().folder + " : " + hash,{ fileName : "source/online/GameClient.hx", lineNumber : 418, className : "online.GameClient", methodName : "clearOnMessage"});
+				haxe_Log.trace("verifying song: " + online_GameClient.room.get_state().song + " | " + online_GameClient.room.get_state().folder + " : " + hash,{ fileName : "source/online/GameClient.hx", lineNumber : 421, className : "online.GameClient", methodName : "clearOnMessage"});
 				online_GameClient.send("verifyChart",hash);
 				states_FreeplayState.destroyFreeplayVocals();
 				var nextState = flixel_util_typeLimit_NextState.fromMaker(function() {
@@ -142743,7 +142759,7 @@ online_GameClient.clearOnMessage = function() {
 				var exc = haxe_Exception.caught(_g).unwrap();
 				Sys.println(exc);
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 415, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 418, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 };
 online_GameClient.clearCallbacks = function(irefSchema,fieldNameOrOperation) {
@@ -142798,11 +142814,11 @@ online_GameClient.send = function(type,message) {
 				var exc = haxe_Exception.caught(_g);
 				online_GameClient._pendingMessages.push([type,message]);
 				if(!online_GameClient.reconnecting) {
-					haxe_Log.trace(Std.string(exc) + " : FAILED TO SEND: " + Std.string(type) + " -> " + Std.string(message),{ fileName : "source/online/GameClient.hx", lineNumber : 492, className : "online.GameClient", methodName : "send"});
+					haxe_Log.trace(Std.string(exc) + " : FAILED TO SEND: " + Std.string(type) + " -> " + Std.string(message),{ fileName : "source/online/GameClient.hx", lineNumber : 495, className : "online.GameClient", methodName : "send"});
 					online_GameClient.reconnect();
 				}
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 484, className : "online.GameClient", methodName : "send"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 487, className : "online.GameClient", methodName : "send"});
 	}
 };
 online_GameClient.get_isOwner = function() {
@@ -142898,14 +142914,14 @@ online_GameClient.getServerPlayerCount = function(address,callback) {
 			if(callback != null) {
 				online_backend_Waiter.put(function() {
 					callback(Std.parseInt(data));
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 596, className : "online.GameClient", methodName : "getServerPlayerCount"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 599, className : "online.GameClient", methodName : "getServerPlayerCount"});
 			}
 		};
 		http.onError = function(error) {
 			if(callback != null) {
 				online_backend_Waiter.put(function() {
 					callback(null);
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 603, className : "online.GameClient", methodName : "getServerPlayerCount"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 606, className : "online.GameClient", methodName : "getServerPlayerCount"});
 			}
 		};
 		http.request();
@@ -143054,7 +143070,7 @@ online_GameClient.updateAddresses = function() {
 	};
 	http.onError = function(error) {
 		online_GameClient.serverAddresses = ["wss://funkin.sniro.boo"];
-		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 753, className : "online.GameClient", methodName : "updateAddresses"});
+		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 756, className : "online.GameClient", methodName : "updateAddresses"});
 		online_GameClient.hasAddresses = false;
 		online_network_FunkinNetwork.client = new online_http_HTTPHandler(haxe_ds_Either.Right(online_GameClient.addressToUrl(online_GameClient.get_networkServerAddress())));
 	};
@@ -148109,6 +148125,7 @@ online_gui_sidebar_tabs_ProfileTab.prototype = $extend(online_gui_sidebar_obj_Ta
 	,__properties__: $extend(online_gui_sidebar_obj_TabSprite.prototype.__properties__,{set_loading:"set_loading",set_username:"set_username"})
 });
 var online_http_HTTPClient = function(address) {
+	this.allowProxy = false;
 	this.receivedBytes = 0;
 	this.contentLength = 0;
 	this.cancelRequested = false;
@@ -148213,6 +148230,7 @@ online_http_HTTPClient.prototype = {
 		}
 		return this.requestWeb();
 	}
+	,allowProxy: null
 	,requestWeb: function() {
 		try {
 			var path = this.requestData.path;
@@ -148220,29 +148238,48 @@ online_http_HTTPClient.prototype = {
 				path = "/" + path;
 			}
 			var url = (this.address.ssl ? "https://" : "http://") + this.address.host + (this.address.port != 80 && this.address.port != 443 ? ":" + this.address.port : "") + path;
-			var x = new XMLHttpRequest();
-			x.open(this.requestData.post ? "POST" : "GET",url,false);
-			x.overrideMimeType("text/plain; charset=x-user-defined");
-			if(this.requestData.headers != null) {
-				var h = this.requestData.headers.h;
-				var _g_h = h;
-				var _g_keys = Object.keys(h);
-				var _g_length = _g_keys.length;
-				var _g_current = 0;
-				while(_g_current < _g_length) {
-					var key = _g_keys[_g_current++];
-					var _g_key = key;
-					var _g_value = _g_h[key];
-					var key1 = _g_key;
-					var value = _g_value;
-					try {
-						x.setRequestHeader(key1,value);
-					} catch( _g ) {
+			var candidates = [url];
+			if(this.allowProxy && !this.requestData.post) {
+				var enc = encodeURIComponent(url);
+				candidates.push("https://corsproxy.io/?url=" + enc);
+				candidates.push("https://api.allorigins.win/raw?url=" + enc);
+			}
+			var x = null;
+			var _g = 0;
+			while(_g < candidates.length) {
+				var u = candidates[_g];
+				++_g;
+				x = new XMLHttpRequest();
+				x.open(this.requestData.post ? "POST" : "GET",u,false);
+				x.overrideMimeType("text/plain; charset=x-user-defined");
+				if(this.requestData.headers != null && u == url) {
+					var h = this.requestData.headers.h;
+					var _g_h = h;
+					var _g_keys = Object.keys(h);
+					var _g_length = _g_keys.length;
+					var _g_current = 0;
+					while(_g_current < _g_length) {
+						var key = _g_keys[_g_current++];
+						var _g_key = key;
+						var _g_value = _g_h[key];
+						var key1 = _g_key;
+						var value = _g_value;
+						try {
+							x.setRequestHeader(key1,value);
+						} catch( _g1 ) {
+						}
 					}
 				}
+				this.set_status(online_http_ClientStatus.READING_HEADERS);
+				try {
+					x.send(this.requestData.body);
+				} catch( _g2 ) {
+				}
+				if(x.status >= 200 && x.status < 300) {
+					break;
+				}
+				haxe_Log.trace("request failed via " + u + " status=" + x.status,{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 305, className : "online.http.HTTPClient", methodName : "requestWeb"});
 			}
-			this.set_status(online_http_ClientStatus.READING_HEADERS);
-			x.send(this.requestData.body);
 			this.response.headers = new haxe_ds_StringMap();
 			var _g = 0;
 			var _g1 = x.getAllResponseHeaders().split("\r\n");
@@ -148286,7 +148323,7 @@ online_http_HTTPClient.prototype = {
 		} catch( _g ) {
 			var exc = haxe_Exception.caught(_g);
 			exc = new haxe_Exception("Could not reach " + (this.address != null ? this.address.host : "?") + " from the browser (blocked by the server's CORS rules, or the server is offline). " + Std.string(exc));
-			haxe_Log.trace("requestWeb failed: " + Std.string(exc) + " host=" + (this.address != null ? this.address.host + ":" + this.address.port : "null") + " path=" + (this.requestData != null ? this.requestData.path : "null"),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 321, className : "online.http.HTTPClient", methodName : "requestWeb"});
+			haxe_Log.trace("requestWeb failed: " + Std.string(exc) + " host=" + (this.address != null ? this.address.host + ":" + this.address.port : "null") + " path=" + (this.requestData != null ? this.requestData.path : "null"),{ fileName : "source/online/http/HTTPClient.hx", lineNumber : 336, className : "online.http.HTTPClient", methodName : "requestWeb"});
 			this.response.exception = exc;
 			this.set_status(online_http_ClientStatus.FAILED(exc));
 		}
@@ -148697,6 +148734,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 		sys_FileSystem.createDirectory(online_mods_ModDownloader.downloadDir);
 	}
 	this.client = new online_http_HTTPClient(haxe_ds_Either.Right(modURL));
+	this.client.allowProxy = true;
 	this.alert = new online_gui_DownloadAlert(this.url);
 	this.client.onStatus = function(v) {
 		switch(v._hx_index) {
@@ -148713,7 +148751,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Downloading failed!",_gthis.client.response.headers.h["content-type"] + " may be invalid or unsupported file type!");
 					online_substates_RequestSubstate.requestURL(_gthis.url,"The following mod needs to be installed from this source",true);
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 64, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 67, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 			break;
 		case 3:
@@ -148727,7 +148765,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 		}
 	};
 	online_mods_ModDownloader.downloaders.push(this);
-	haxe_Log.trace("ModDownloader start: " + modURL,{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 79, className : "online.mods.ModDownloader", methodName : "new"});
+	haxe_Log.trace("ModDownloader start: " + modURL,{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 82, className : "online.mods.ModDownloader", methodName : "new"});
 	online_backend_Thread.run(function() {
 		try {
 			_gthis.client.request(haxe_ds_Either.Left({ output : sys_io_File.append(_gthis.downloadPath,true), headers : headers}));
@@ -148736,7 +148774,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 			if(!_gthis.client.cancelRequested) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Error!",_gthis.id + ": " + online_util_ShitUtil.prettyError(exc));
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 91, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 94, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 		}
 		_gthis.client.close();
@@ -148744,13 +148782,13 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 		var tmp1 = tmp != null ? tmp.isFailed() : null;
 		var tmp = _gthis.client.response;
 		var tmp2 = _gthis.client.response;
-		haxe_Log.trace("ModDownloader finished request, failed=" + Std.string(tmp1) + " status=" + (tmp != null ? tmp.status : null) + " exc=" + Std.string(tmp2 != null ? tmp2.exception : null),{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 99, className : "online.mods.ModDownloader", methodName : "new"});
+		haxe_Log.trace("ModDownloader finished request, failed=" + Std.string(tmp1) + " status=" + (tmp != null ? tmp.status : null) + " exc=" + Std.string(tmp2 != null ? tmp2.exception : null),{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 102, className : "online.mods.ModDownloader", methodName : "new"});
 		var tmp = _gthis.client.response;
 		if(tmp != null ? tmp.isFailed() : null) {
 			if(_gthis.client.cancelRequested) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Download canceled!");
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 104, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 107, className : "online.mods.ModDownloader", methodName : "new"});
 			} else {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Downloading failed!","The browser blocked the direct download.\n" + "A new tab will download the file. To install it, put the .zip in the repo's mods folder and reload the game.");
@@ -148758,7 +148796,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 						window.open(modURL,"_blank");
 					} catch( _g ) {
 					}
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 109, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 112, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 		} else {
 			_gthis.set_status(online_mods_DownloaderStatus.INSTALLING);
@@ -254138,7 +254176,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "001538b6c6795f481ffab4741901db79bf52bee1";
+Main.GIT_COMMIT = "64289552e1a0f42b32888c8184f0d6715506b91c";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
