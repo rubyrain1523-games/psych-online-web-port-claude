@@ -1,1 +1,1 @@
-Mods are not implemented in the web version yet (the game shows 'Not implemented yet' and never downloads or loads them). This folder is unused for now.
+Put zipped mods here (one .zip per mod). They only load when you pick a Modded option on the start menu.

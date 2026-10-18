@@ -1,16 +1,23 @@
 package online.mods;
 
-/** Mods are not implemented in the browser version yet. */
+/** Mods in the browser version are opt-in: the launcher menu sets window.__psychModsEnabled. */
 class WebMods {
-	public static inline var DISABLED:Bool = #if html5 true #else false #end;
+	public static function enabled():Bool {
+		#if html5
+		return js.Syntax.code("!!window.__psychModsEnabled");
+		#else
+		return true;
+		#end
+	}
 
 	/** Returns true (and tells the player) when mods are unavailable. */
 	public static function blocked():Bool {
 		#if html5
-		online.gui.Alert.alert("Not implemented yet", "Mods aren't available in the web version yet.");
-		return true;
-		#else
-		return false;
+		if (!enabled()) {
+			online.gui.Alert.alert("Not implemented yet", "Mods are off in this mode. Reload and pick a Modded option to use them.");
+			return true;
+		}
 		#end
+		return false;
 	}
 }

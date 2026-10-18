@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "16";
+	app.meta.h["build"] = "17";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -137108,7 +137108,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 915260;
+	this.version = 586639;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -153137,9 +153137,15 @@ online_mods_OnlineMods.formatSongName = function(song) {
 var online_mods_WebMods = function() { };
 $hxClasses["online.mods.WebMods"] = online_mods_WebMods;
 online_mods_WebMods.__name__ = "online.mods.WebMods";
+online_mods_WebMods.enabled = function() {
+	return !!window.__psychModsEnabled;
+};
 online_mods_WebMods.blocked = function() {
-	online_gui_Alert.alert("Not implemented yet","Mods aren't available in the web version yet.");
-	return true;
+	if(!online_mods_WebMods.enabled()) {
+		online_gui_Alert.alert("Not implemented yet","Mods are off in this mode. Reload and pick a Modded option to use them.");
+		return true;
+	}
+	return false;
 };
 var online_network_Auth = function() { };
 $hxClasses["online.network.Auth"] = online_network_Auth;
@@ -257778,7 +257784,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "2cbdef3269c9dfd38e7857c80c261ae58cb1013e";
+Main.GIT_COMMIT = "742ef95ec96f17b9988097e8bae700d416111baa";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
@@ -261302,7 +261308,6 @@ online_mods_ModDownloader.downloadDir = openfl_filesystem_File.applicationDirect
 online_mods_ModDownloader.allowedMediaTypes = ["application/zip","application/zip-compressed","application/x-zip-compressed","application/x-zip","application/x-tar","application/gzip","application/x-gtar","application/octet-stream"];
 online_mods_OnlineMods.vanillaSongs = ["tutorial","bopeebo","fresh","dadbattle","spookeez","south","monster","pico","philly","blammed","satin-panties","high","milf","cocoa","eggnog","winter-horrorland","senpai","roses","thorns","ugh","guns","stress","dad-battle","philly-nice","test","smash","ridge"];
 online_mods_OnlineMods.vanillaWeeks = ["tutorial","week1","week2","week3","week4","week5","week6","week7"];
-online_mods_WebMods.DISABLED = true;
 online_network_Auth.authID = null;
 online_network_Auth.authToken = null;
 online_network_FunkinNetwork.client = null;
