@@ -2651,7 +2651,7 @@ class PlayState extends MusicBeatState
 
 			trace("NEW Note Mapping: " + friendNotes);
 
-			var notesCount:Array<Int> = [for (_ in 0...Note.maniaKeys) 0];
+			var notesCount:Array<Int> = [for (_ in 0...(Note.maniaKeys * 2)) 0]; // both sides (JS arrays don't auto-fill with 0 like native)
 			// var bonusCount:Array<Int> = [for (_ in 0...maniaModifier) 0];
 			var jackStack:Array<Int> = [-1, -1];
 			var fuckStack:Array<Int> = [-1, -1];
@@ -2687,12 +2687,17 @@ class PlayState extends MusicBeatState
 			for (i => note in dataNotes) {
 				var daNoteDataSide:Int = Std.int(Std.int(note[1]) / Note.maniaKeys);
 				var daNoteData:Int = Std.int(note[1] % Note.maniaKeys);
-				var mustPress:Int = cast getMustPressFromRaw(noteData[dataNotesSection[i]], note);
+				var mustPress:Int = (cast getMustPressFromRaw(noteData[dataNotesSection[i]], note) : Bool) ? 1 : 0;
 
 				note[1] = nextNoteData(daNoteData, mustPress);
 				note[1] += maniaModifier * daNoteDataSide;
 			}
 
+			#if html5
+			var laneDbg:Map<Int,Int> = new Map();
+			for (n in dataNotes) laneDbg.set(Std.int(n[1]), (laneDbg.get(Std.int(n[1])) ?? 0) + 1);
+			trace('LANES ' + [for (k => v in laneDbg) k + ':' + v].join(','));
+			#end
 			trace('Converted from: ' + Note.maniaKeys + 'k');
 			Note.maniaKeys = maniaModifier;
 		}

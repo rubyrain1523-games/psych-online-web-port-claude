@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "11";
+	app.meta.h["build"] = "12";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -133559,7 +133559,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 654825;
+	this.version = 894964;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -225158,7 +225158,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 			haxe_Log.trace("NEW Note Mapping: " + Std.string(friendNotes),{ fileName : "source/states/PlayState.hx", lineNumber : 2652, className : "states.PlayState", methodName : "generateSong"});
 			var _g = [];
 			var _g1 = 0;
-			var _g2 = objects_Note.maniaKeys;
+			var _g2 = objects_Note.maniaKeys * 2;
 			while(_g1 < _g2) {
 				var _ = _g1++;
 				_g.push(0);
@@ -225185,16 +225185,37 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				var note = _g_value;
 				var daNoteDataSide = (note[1] | 0) / objects_Note.maniaKeys | 0;
 				var daNoteData = note[1] % objects_Note.maniaKeys | 0;
-				var mustPress = states_PlayState.getMustPressFromRaw(noteData[dataNotesSection[i]],note);
+				var mustPress = states_PlayState.getMustPressFromRaw(noteData[dataNotesSection[i]],note) ? 1 : 0;
 				note[1] = nextNoteData(daNoteData,mustPress);
 				note[1] += this.maniaModifier * daNoteDataSide;
 			}
-			haxe_Log.trace("Converted from: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2696, className : "states.PlayState", methodName : "generateSong"});
+			var laneDbg = new haxe_ds_IntMap();
+			var _g = 0;
+			while(_g < dataNotes.length) {
+				var n = dataNotes[_g];
+				++_g;
+				var tmp = laneDbg.h[n[1] | 0];
+				laneDbg.h[n[1] | 0] = (tmp != null ? tmp : 0) + 1;
+			}
+			var _g = [];
+			var map = laneDbg;
+			var _g_map = map;
+			var _g_keys = map.keys();
+			while(_g_keys.hasNext()) {
+				var key = _g_keys.next();
+				var _g_value = _g_map.get(key);
+				var _g_key = key;
+				var k = _g_key;
+				var v = _g_value;
+				_g.push(k + ":" + v);
+			}
+			haxe_Log.trace("LANES " + _g.join(","),{ fileName : "source/states/PlayState.hx", lineNumber : 2699, className : "states.PlayState", methodName : "generateSong"});
+			haxe_Log.trace("Converted from: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2701, className : "states.PlayState", methodName : "generateSong"});
 			objects_Note.set_maniaKeys(this.maniaModifier);
 		}
-		haxe_Log.trace("Song Keys: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2700, className : "states.PlayState", methodName : "generateSong"});
-		haxe_Log.trace("VOICES len=" + this.vocals._length + " opp=" + this.opponentVocals._length,{ fileName : "source/states/PlayState.hx", lineNumber : 2702, className : "states.PlayState", methodName : "generateSong"});
-		haxe_Log.trace("DBGINST len=" + this.inst._length + " dataNotes=" + dataNotes.length + " noteDataSecs=" + noteData.length,{ fileName : "source/states/PlayState.hx", lineNumber : 2703, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("Song Keys: " + objects_Note.maniaKeys + "k",{ fileName : "source/states/PlayState.hx", lineNumber : 2705, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("VOICES len=" + this.vocals._length + " opp=" + this.opponentVocals._length,{ fileName : "source/states/PlayState.hx", lineNumber : 2707, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("DBGINST len=" + this.inst._length + " dataNotes=" + dataNotes.length + " noteDataSecs=" + noteData.length,{ fileName : "source/states/PlayState.hx", lineNumber : 2708, className : "states.PlayState", methodName : "generateSong"});
 		this.songSpeedType = backend_ClientPrefs.getGameplaySetting("scrolltype");
 		switch(this.songSpeedType) {
 		case "constant":
@@ -225316,14 +225337,14 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 			}
 		}
 		this.songDensity = playingNoteCount == 0 || this.inst._length <= 0 ? 0 : playingNoteCount / (this.inst._length / this.playbackRate / 1000) / 2;
-		haxe_Log.trace("note density score: " + this.songDensity + (" for total of " + playingNoteCount + " notes"),{ fileName : "source/states/PlayState.hx", lineNumber : 2846, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("note density score: " + this.songDensity + (" for total of " + playingNoteCount + " notes"),{ fileName : "source/states/PlayState.hx", lineNumber : 2851, className : "states.PlayState", methodName : "generateSong"});
 		var maxFP = online_FunkinPoints.calcFP(1,0,this.songDensity,playingNoteCount,playingNoteCount);
-		haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2849, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2854, className : "states.PlayState", methodName : "generateSong"});
 		if(backend_ClientPrefs.data.newFPPreview) {
 			var maxFP = online_FunkinPoints.devFP(1,0,this.songDensity,playingNoteCount,playingNoteCount,this.difficultyInfo);
-			haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2852, className : "states.PlayState", methodName : "generateSong"});
+			haxe_Log.trace("max points: ~" + maxFP + "FP",{ fileName : "source/states/PlayState.hx", lineNumber : 2857, className : "states.PlayState", methodName : "generateSong"});
 		}
-		haxe_Log.trace("NPH: " + notesPerHalf,{ fileName : "source/states/PlayState.hx", lineNumber : 2856, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace("NPH: " + notesPerHalf,{ fileName : "source/states/PlayState.hx", lineNumber : 2861, className : "states.PlayState", methodName : "generateSong"});
 		var _g = 0;
 		var _g1 = songData.events;
 		while(_g < _g1.length) {
@@ -225339,7 +225360,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		this.unspawnNotes.sort(states_PlayState.sortByTime);
 		this.generatedMusic = true;
 		this.difficultyInfo = online_ChartAnalyzer.calc(songData,states_PlayState.playsAsBF());
-		haxe_Log.trace(this.difficultyInfo,{ fileName : "source/states/PlayState.hx", lineNumber : 2867, className : "states.PlayState", methodName : "generateSong"});
+		haxe_Log.trace(this.difficultyInfo,{ fileName : "source/states/PlayState.hx", lineNumber : 2872, className : "states.PlayState", methodName : "generateSong"});
 		this.prepareNetSong();
 	}
 	,netSong: null
@@ -225567,7 +225588,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		if(this.finishTimer != null) {
 			return;
 		}
-		haxe_Log.trace("resynced vocals at " + Math.floor(backend_Conductor.songPosition),{ fileName : "source/states/PlayState.hx", lineNumber : 3169, className : "states.PlayState", methodName : "resyncVocals"});
+		haxe_Log.trace("resynced vocals at " + Math.floor(backend_Conductor.songPosition),{ fileName : "source/states/PlayState.hx", lineNumber : 3174, className : "states.PlayState", methodName : "resyncVocals"});
 		flixel_FlxG.sound.music.play();
 		flixel_FlxG.sound.music.set_pitch(this.playbackRate);
 		backend_Conductor.songPosition = flixel_FlxG.sound.music._time;
@@ -225932,7 +225953,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		}
 		if(!(online_GameClient.client != null || online_GameClient.reconnecting) && !backend_ClientPrefs.data.noReset && this.get_controls().get_RESET() && this.canReset && !this.inCutscene && this.startedCountdown && !this.endingSong && canInput && states_PlayState.replayData == null && !this.cpuControlled) {
 			this.subsHealth(9999);
-			haxe_Log.trace("RESET = True",{ fileName : "source/states/PlayState.hx", lineNumber : 3521, className : "states.PlayState", methodName : "update"});
+			haxe_Log.trace("RESET = True",{ fileName : "source/states/PlayState.hx", lineNumber : 3526, className : "states.PlayState", methodName : "update"});
 		}
 		this.doDeathCheck();
 		if(this.unspawnNotes[0] != null) {
@@ -227176,7 +227197,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 						});
 					}
 					if(!backend_ClientPrefs.getGameplaySetting("practice") && !this.isInvalidScore()) {
-						haxe_Log.trace("saving week performance for: " + backend_WeekData.getWeekFileName(),{ fileName : "source/states/PlayState.hx", lineNumber : 4630, className : "states.PlayState", methodName : "endSong"});
+						haxe_Log.trace("saving week performance for: " + backend_WeekData.getWeekFileName(),{ fileName : "source/states/PlayState.hx", lineNumber : 4635, className : "states.PlayState", methodName : "endSong"});
 						states_StoryMenuState.weekCompleted.h[backend_WeekData.weeksList[states_PlayState.storyWeek]] = true;
 						backend_Highscore.saveWeekScore(backend_WeekData.getWeekFileName(),states_PlayState.campaignScore,states_PlayState.storyDifficulty);
 						flixel_FlxG.save.data.weekCompleted = states_StoryMenuState.weekCompleted;
@@ -227196,9 +227217,9 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					}
 					var path = backend_Paths.invalidChars.split(StringTools.replace(fileSuffix," ","-")).join("-");
 					var difficulty = backend_Paths.hideChars.split(path).join("").toLowerCase();
-					haxe_Log.trace("LOADING NEXT SONG",{ fileName : "source/states/PlayState.hx", lineNumber : 4643, className : "states.PlayState", methodName : "endSong"});
+					haxe_Log.trace("LOADING NEXT SONG",{ fileName : "source/states/PlayState.hx", lineNumber : 4648, className : "states.PlayState", methodName : "endSong"});
 					var path = backend_Paths.invalidChars.split(StringTools.replace(states_PlayState.storyPlaylist[0]," ","-")).join("-");
-					haxe_Log.trace(backend_Paths.hideChars.split(path).join("").toLowerCase() + difficulty,{ fileName : "source/states/PlayState.hx", lineNumber : 4644, className : "states.PlayState", methodName : "endSong"});
+					haxe_Log.trace(backend_Paths.hideChars.split(path).join("").toLowerCase() + difficulty,{ fileName : "source/states/PlayState.hx", lineNumber : 4649, className : "states.PlayState", methodName : "endSong"});
 					flixel_addons_transition_FlxTransitionableState.skipNextTransIn = true;
 					flixel_addons_transition_FlxTransitionableState.skipNextTransOut = true;
 					states_PlayState.prevCamFollow = this.camFollow;
@@ -227222,7 +227243,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					}
 				}
 			} else {
-				haxe_Log.trace("WENT BACK TO FREEPLAY??",{ fileName : "source/states/PlayState.hx", lineNumber : 4659, className : "states.PlayState", methodName : "endSong"});
+				haxe_Log.trace("WENT BACK TO FREEPLAY??",{ fileName : "source/states/PlayState.hx", lineNumber : 4664, className : "states.PlayState", methodName : "endSong"});
 				backend_Mods.loadTopMod();
 				states_PlayState.cancelMusicFadeTween();
 				if(flixel_addons_transition_FlxTransitionableState.skipNextTransIn) {
@@ -229130,10 +229151,10 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					newScript.destroy();
 					HxOverrides.remove(this.hscriptArray,newScript);
 					if(backend_ClientPrefs.isDebug()) {
-						haxe_Log.trace("failed to initialize sscript interp!!! (" + file + ")",{ fileName : "source/states/PlayState.hx", lineNumber : 6115, className : "states.PlayState", methodName : "initHScript"});
+						haxe_Log.trace("failed to initialize sscript interp!!! (" + file + ")",{ fileName : "source/states/PlayState.hx", lineNumber : 6120, className : "states.PlayState", methodName : "initHScript"});
 					}
 				} else if(backend_ClientPrefs.isDebug()) {
-					haxe_Log.trace("initialized sscript interp successfully: " + file,{ fileName : "source/states/PlayState.hx", lineNumber : 6117, className : "states.PlayState", methodName : "initHScript"});
+					haxe_Log.trace("initialized sscript interp successfully: " + file,{ fileName : "source/states/PlayState.hx", lineNumber : 6122, className : "states.PlayState", methodName : "initHScript"});
 				}
 			}
 		} catch( _g ) {
@@ -229574,7 +229595,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 							}
 							_gthis.updateScoreSID(sid[0],true);
 						};
-					})(player,sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6633, className : "states.PlayState", methodName : "registerMessages"});
+					})(player,sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6638, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(player,sid));
 			online_GameClient.callbacks.listen(player[0],"botplay",(function(sid) {
@@ -229586,7 +229607,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 							}
 							_gthis.showBotplay();
 						};
-					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6646, className : "states.PlayState", methodName : "registerMessages"});
+					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6651, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(sid));
 			online_GameClient.callbacks.listen(player[0],"noteHold",(function(sid) {
@@ -229600,7 +229621,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 								_gthis.characters.h[sid[0]].set_noteHold(value);
 							}
 						};
-					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6655, className : "states.PlayState", methodName : "registerMessages"});
+					})(sid),{ fileName : "source/states/PlayState.hx", lineNumber : 6660, className : "states.PlayState", methodName : "registerMessages"});
 				};
 			})(sid));
 		}
@@ -229610,12 +229631,12 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 			}
 			online_backend_Waiter.put(function() {
 				_gthis.callOnScripts("onCustomMessage",message);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6669, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6674, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("log",function(message) {
 			online_backend_Waiter.putPersist(function() {
 				online_gui_Alert.alert("New message",online_util_ShitUtil.parseLog(message).content);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6675, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6680, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("strumPlay",function(_message) {
 			var sid = _message[0];
@@ -229636,7 +229657,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 					spr.playAnim(Std.string(message[0]) + "",true);
 					spr.resetAnim = message[2];
 				}
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6686, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6691, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("charPlay",function(_message) {
 			var sid = _message[0];
@@ -229669,7 +229690,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 						}
 					}
 				}
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6709, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6714, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("noteHit",function(_message) {
 			var sid = _message[0];
@@ -229695,7 +229716,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.callOnHScript(message[6] ? "goodNoteHit" : "opponentNoteHit",[_gthis.notes.members[message[5]],_gthis.getCharPlayTag(message[6],sid)]);
 				_gthis.updateScoreSID(sid,false);
 				_gthis.getVocalsFromSIDVolume(sid,1);
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6737, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6742, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("noteMiss",function(_message) {
 			var sid = _message[0];
@@ -229717,7 +229738,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.updateScoreSID(sid,true);
 				_gthis.getVocalsFromSIDVolume(sid,0);
 				_gthis.getPlayerStats(sid).combo = 0;
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6771, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6776, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("startSong",function(_) {
 			online_backend_Waiter.put(function() {
@@ -229727,7 +229748,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				_gthis.isReady = true;
 				_gthis.set_waitReady(false);
 				_gthis.startCountdown();
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6798, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6803, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_GameClient.room.onMessage("endSong",function(_) {
 			online_backend_Waiter.put(function() {
@@ -229736,7 +229757,7 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 				}
 				_gthis.canEndSongOnline = true;
 				_gthis.endSong();
-			},{ fileName : "source/states/PlayState.hx", lineNumber : 6809, className : "states.PlayState", methodName : "registerMessages"});
+			},{ fileName : "source/states/PlayState.hx", lineNumber : 6814, className : "states.PlayState", methodName : "registerMessages"});
 		});
 		online_objects_ChatBox.tryRegisterLogs();
 	}
@@ -254176,7 +254197,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "64289552e1a0f42b32888c8184f0d6715506b91c";
+Main.GIT_COMMIT = "58f9bf7ffb6beade55df2b4da4b801e505551213";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
