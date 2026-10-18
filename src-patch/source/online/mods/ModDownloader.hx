@@ -27,6 +27,9 @@ class ModDownloader {
 	public var url:String;
 
 	public function new(fileName:String, modURL:String, ?gbMod:GBMod, ?onSuccess:String->Void, ?headers:Map<String, String>, ?ogURL:String) {
+		if (online.mods.WebMods.blocked())
+			return;
+
 		url = ogURL ?? modURL;
 		id = FileUtils.formatFile(url);
 		downloadPath = downloadDir + id + ".dwl";

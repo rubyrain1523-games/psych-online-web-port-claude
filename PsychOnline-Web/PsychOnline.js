@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "15";
+	app.meta.h["build"] = "16";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -137108,7 +137108,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 495469;
+	this.version = 915260;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -152265,6 +152265,9 @@ openfl_filesystem_File.prototype = {
 };
 var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers,ogURL) {
 	var _gthis = this;
+	if(online_mods_WebMods.blocked()) {
+		return;
+	}
 	var tmp = ogURL;
 	this.url = tmp != null ? tmp : modURL;
 	this.id = online_util_FileUtils.formatFile(this.url);
@@ -152282,7 +152285,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 	if(online_mods_ModDownloader.downloaders.length >= 6) {
 		online_backend_Waiter.putPersist(function() {
 			online_gui_Alert.alert("Downloading failed!","Too many files are downloading right now! (Max 6)");
-		},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 41, className : "online.mods.ModDownloader", methodName : "new"});
+		},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 44, className : "online.mods.ModDownloader", methodName : "new"});
 		return;
 	}
 	if(!sys_FileSystem.exists(online_mods_ModDownloader.downloadDir)) {
@@ -152306,7 +152309,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Downloading failed!",_gthis.client.response.headers.h["content-type"] + " may be invalid or unsupported file type!");
 					online_substates_RequestSubstate.requestURL(_gthis.url,"The following mod needs to be installed from this source",true);
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 67, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 70, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 			break;
 		case 3:
@@ -152320,7 +152323,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 		}
 	};
 	online_mods_ModDownloader.downloaders.push(this);
-	haxe_Log.trace("ModDownloader start: " + modURL,{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 82, className : "online.mods.ModDownloader", methodName : "new"});
+	haxe_Log.trace("ModDownloader start: " + modURL,{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 85, className : "online.mods.ModDownloader", methodName : "new"});
 	online_backend_Thread.run(function() {
 		try {
 			_gthis.client.request(haxe_ds_Either.Left({ output : sys_io_File.append(_gthis.downloadPath,true), headers : headers}));
@@ -152329,7 +152332,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 			if(!_gthis.client.cancelRequested) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Error!",_gthis.id + ": " + online_util_ShitUtil.prettyError(exc));
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 94, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 97, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 		}
 		_gthis.client.close();
@@ -152337,13 +152340,13 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 		var tmp1 = tmp != null ? tmp.isFailed() : null;
 		var tmp = _gthis.client.response;
 		var tmp2 = _gthis.client.response;
-		haxe_Log.trace("ModDownloader finished request, failed=" + Std.string(tmp1) + " status=" + (tmp != null ? tmp.status : null) + " exc=" + Std.string(tmp2 != null ? tmp2.exception : null),{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 102, className : "online.mods.ModDownloader", methodName : "new"});
+		haxe_Log.trace("ModDownloader finished request, failed=" + Std.string(tmp1) + " status=" + (tmp != null ? tmp.status : null) + " exc=" + Std.string(tmp2 != null ? tmp2.exception : null),{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 105, className : "online.mods.ModDownloader", methodName : "new"});
 		var tmp = _gthis.client.response;
 		if(tmp != null ? tmp.isFailed() : null) {
 			if(_gthis.client.cancelRequested) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Download canceled!");
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 107, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 110, className : "online.mods.ModDownloader", methodName : "new"});
 			} else {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Downloading failed!","The browser blocked the direct download.\n" + "A new tab will download the file. To install it, put the .zip in the repo's mods folder and reload the game.");
@@ -152351,7 +152354,7 @@ var online_mods_ModDownloader = function(fileName,modURL,gbMod,onSuccess,headers
 						window.open(modURL,"_blank");
 					} catch( _g ) {
 					}
-				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 112, className : "online.mods.ModDownloader", methodName : "new"});
+				},{ fileName : "source/online/mods/ModDownloader.hx", lineNumber : 115, className : "online.mods.ModDownloader", methodName : "new"});
 			}
 		} else {
 			_gthis.set_status(online_mods_DownloaderStatus.INSTALLING);
@@ -153130,6 +153133,13 @@ online_mods_OnlineMods.installMod = function(fileName,modURL,gbMod,onSuccess) {
 };
 online_mods_OnlineMods.formatSongName = function(song) {
 	return StringTools.replace(StringTools.trim(song)," ","-").toLowerCase();
+};
+var online_mods_WebMods = function() { };
+$hxClasses["online.mods.WebMods"] = online_mods_WebMods;
+online_mods_WebMods.__name__ = "online.mods.WebMods";
+online_mods_WebMods.blocked = function() {
+	online_gui_Alert.alert("Not implemented yet","Mods aren't available in the web version yet.");
+	return true;
 };
 var online_network_Auth = function() { };
 $hxClasses["online.network.Auth"] = online_network_Auth;
@@ -158676,18 +158686,22 @@ online_states_OnlineState.prototype = $extend(backend_MusicBeatState.prototype,{
 					break;
 				case "mod downloader":
 					this.disableInput = true;
-					var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
-						return new online_states_DownloaderState();
-					});
-					var stateOnCall1 = flixel_FlxG.game._state;
-					if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
-						flixel_FlxG.game._state.startOutro(function() {
-							if(flixel_FlxG.game._state == stateOnCall1) {
-								flixel_FlxG.game._nextState = nextState1;
-							} else {
-								flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
-							}
+					if(online_mods_WebMods.blocked()) {
+						this.disableInput = false;
+					} else {
+						var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
+							return new online_states_DownloaderState();
 						});
+						var stateOnCall1 = flixel_FlxG.game._state;
+						if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
+							flixel_FlxG.game._state.startOutro(function() {
+								if(flixel_FlxG.game._state == stateOnCall1) {
+									flixel_FlxG.game._nextState = nextState1;
+								} else {
+									flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
+								}
+							});
+						}
 					}
 					break;
 				case "options":
@@ -162102,36 +162116,40 @@ online_states_RoomState.prototype = $extend(backend_MusicBeatState.prototype,{
 					break;
 				case 5:
 					if(this.verifyDownloadMod(true)) {
-						var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
-							return new online_states_DownloaderState();
-						});
-						var stateOnCall1 = flixel_FlxG.game._state;
-						if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
-							flixel_FlxG.game._state.startOutro(function() {
-								if(flixel_FlxG.game._state == stateOnCall1) {
-									flixel_FlxG.game._nextState = nextState1;
-								} else {
-									flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
-								}
+						if(!online_mods_WebMods.blocked()) {
+							var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
+								return new online_states_DownloaderState();
 							});
+							var stateOnCall1 = flixel_FlxG.game._state;
+							if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
+								flixel_FlxG.game._state.startOutro(function() {
+									if(flixel_FlxG.game._state == stateOnCall1) {
+										flixel_FlxG.game._nextState = nextState1;
+									} else {
+										flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
+									}
+								});
+							}
 						}
 					}
 					break;
 				}
 			} else if(flixel_FlxG.mouse._rightButton.current == 2) {
 				if(this.curSelected == 5) {
-					var nextState2 = flixel_util_typeLimit_NextState.fromMaker(function() {
-						return new online_states_DownloaderState();
-					});
-					var stateOnCall2 = flixel_FlxG.game._state;
-					if(!((nextState2) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState2)) {
-						flixel_FlxG.game._state.startOutro(function() {
-							if(flixel_FlxG.game._state == stateOnCall2) {
-								flixel_FlxG.game._nextState = nextState2;
-							} else {
-								flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
-							}
+					if(!online_mods_WebMods.blocked()) {
+						var nextState2 = flixel_util_typeLimit_NextState.fromMaker(function() {
+							return new online_states_DownloaderState();
 						});
+						var stateOnCall2 = flixel_FlxG.game._state;
+						if(!((nextState2) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState2)) {
+							flixel_FlxG.game._state.startOutro(function() {
+								if(flixel_FlxG.game._state == stateOnCall2) {
+									flixel_FlxG.game._nextState = nextState2;
+								} else {
+									flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
+								}
+							});
+						}
 					}
 				}
 			}
@@ -164022,9 +164040,11 @@ online_states_SkinsState.prototype = $extend(backend_MusicBeatState.prototype,{
 			tmp = false;
 		}
 		if(tmp) {
-			this.switchState(flixel_util_typeLimit_NextState.fromMaker(function() {
-				return new online_states_DownloaderState("collection:110039","gb");
-			}));
+			if(!online_mods_WebMods.blocked()) {
+				this.switchState(flixel_util_typeLimit_NextState.fromMaker(function() {
+					return new online_states_DownloaderState("collection:110039","gb");
+				}));
+			}
 		}
 		var tmp;
 		var _this = flixel_FlxG.keys.pressed;
@@ -164035,9 +164055,11 @@ online_states_SkinsState.prototype = $extend(backend_MusicBeatState.prototype,{
 			tmp = false;
 		}
 		if(tmp) {
-			this.switchState(flixel_util_typeLimit_NextState.fromMaker(function() {
-				return new online_states_DownloaderState("category:43788","gb");
-			}));
+			if(!online_mods_WebMods.blocked()) {
+				this.switchState(flixel_util_typeLimit_NextState.fromMaker(function() {
+					return new online_states_DownloaderState("category:43788","gb");
+				}));
+			}
 		}
 		if(this.get_controls().get_FAV() && online_states_SkinsState.curCharacter >= 0) {
 			var charId = this.charactersList[online_states_SkinsState.curCharacter][0] + ":" + this.charactersList[online_states_SkinsState.curCharacter][3];
@@ -217270,18 +217292,20 @@ options_OptionsState.prototype = $extend(backend_MusicBeatState.prototype,{
 			options_OptionsState.set_optionsCategory("game");
 			break;
 		case "Mods":
-			var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
-				return new states_ModsMenuState();
-			});
-			var stateOnCall1 = flixel_FlxG.game._state;
-			if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
-				flixel_FlxG.game._state.startOutro(function() {
-					if(flixel_FlxG.game._state == stateOnCall1) {
-						flixel_FlxG.game._nextState = nextState1;
-					} else {
-						flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
-					}
+			if(!online_mods_WebMods.blocked()) {
+				var nextState1 = flixel_util_typeLimit_NextState.fromMaker(function() {
+					return new states_ModsMenuState();
 				});
+				var stateOnCall1 = flixel_FlxG.game._state;
+				if(!((nextState1) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState1)) {
+					flixel_FlxG.game._state.startOutro(function() {
+						if(flixel_FlxG.game._state == stateOnCall1) {
+							flixel_FlxG.game._nextState = nextState1;
+						} else {
+							flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
+						}
+					});
+				}
 			}
 			break;
 		case "Performance":
@@ -224760,18 +224784,20 @@ states_MainMenuState.prototype = $extend(backend_MusicBeatState.prototype,{
 									}
 									break;
 								case "mods":
-									var nextState3 = flixel_util_typeLimit_NextState.fromMaker(function() {
-										return new states_ModsMenuState();
-									});
-									var stateOnCall3 = flixel_FlxG.game._state;
-									if(!((nextState3) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState3)) {
-										flixel_FlxG.game._state.startOutro(function() {
-											if(flixel_FlxG.game._state == stateOnCall3) {
-												flixel_FlxG.game._nextState = nextState3;
-											} else {
-												flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
-											}
+									if(!online_mods_WebMods.blocked()) {
+										var nextState3 = flixel_util_typeLimit_NextState.fromMaker(function() {
+											return new states_ModsMenuState();
 										});
+										var stateOnCall3 = flixel_FlxG.game._state;
+										if(!((nextState3) instanceof flixel_FlxState) || flixel_FlxG.canSwitchTo(nextState3)) {
+											flixel_FlxG.game._state.startOutro(function() {
+												if(flixel_FlxG.game._state == stateOnCall3) {
+													flixel_FlxG.game._nextState = nextState3;
+												} else {
+													flixel_FlxG.log.advanced("`onOutroComplete` was called after the state was switched. This will be ignored",flixel_system_debug_log_LogStyle.WARNING,true);
+												}
+											});
+										}
 									}
 									break;
 								case "online":
@@ -257752,7 +257778,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "39f00c7bfcfa83cb20190f6946905e278de8ecd6";
+Main.GIT_COMMIT = "2cbdef3269c9dfd38e7857c80c261ae58cb1013e";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
@@ -261276,6 +261302,7 @@ online_mods_ModDownloader.downloadDir = openfl_filesystem_File.applicationDirect
 online_mods_ModDownloader.allowedMediaTypes = ["application/zip","application/zip-compressed","application/x-zip-compressed","application/x-zip","application/x-tar","application/gzip","application/x-gtar","application/octet-stream"];
 online_mods_OnlineMods.vanillaSongs = ["tutorial","bopeebo","fresh","dadbattle","spookeez","south","monster","pico","philly","blammed","satin-panties","high","milf","cocoa","eggnog","winter-horrorland","senpai","roses","thorns","ugh","guns","stress","dad-battle","philly-nice","test","smash","ridge"];
 online_mods_OnlineMods.vanillaWeeks = ["tutorial","week1","week2","week3","week4","week5","week6","week7"];
+online_mods_WebMods.DISABLED = true;
 online_network_Auth.authID = null;
 online_network_Auth.authToken = null;
 online_network_FunkinNetwork.client = null;

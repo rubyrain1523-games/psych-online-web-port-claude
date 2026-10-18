@@ -53,7 +53,7 @@ function __psychLoadZips(done) {
 }
 function __psychBoot(go0) {
   var go = function() {
-    var done = false; var fin = function() { if (!done) { done = true; __psychLoadZips(go0); } };
+    var done = false; var fin = function() { if (!done) { done = true; go0(); } };
     try { Promise.all(Array.from(document.fonts).map(function(f) { return f.load().catch(function() {}); })).then(fin); setTimeout(fin, 8000); } catch (e) { fin(); }
   };
   try {
@@ -63,7 +63,7 @@ function __psychBoot(go0) {
     req.onsuccess = function(e) {
       var db = e.target.result; window.__vfsDb = db;
       var c = db.transaction('files', 'readonly').objectStore('files').openCursor();
-      c.onsuccess = function(ev) { var cur = ev.target.result; if (cur) { window.__vfsPersist[cur.key] = cur.value; cur.continue(); } else go(); };
+      c.onsuccess = function(ev) { var cur = ev.target.result; if (cur) { if (!/^mods\//.test(cur.key) && cur.key !== 'modsList.txt') window.__vfsPersist[cur.key] = cur.value; cur.continue(); } else go(); };
       c.onerror = function() { go(); };
     };
   } catch (e) { go(); }
