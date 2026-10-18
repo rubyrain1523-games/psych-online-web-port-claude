@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "12";
+	app.meta.h["build"] = "13";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -12628,9 +12628,11 @@ backend_Paths.returnSound = function(path,key,library) {
 	gottenPath = gottenPath.substring(gottenPath.indexOf(":") + 1,gottenPath.length);
 	try {
 		if(!Object.prototype.hasOwnProperty.call(backend_Paths.currentTrackedSounds.h,gottenPath)) {
-			var this1 = backend_Paths.currentTrackedSounds;
-			var value = openfl_media_Sound.fromFile("./" + gottenPath);
-			this1.h[gottenPath] = value;
+			var _ws = backend_Paths.webSound(gottenPath);
+			if(_ws == null) {
+				_ws = openfl_media_Sound.fromFile("./" + gottenPath);
+			}
+			backend_Paths.currentTrackedSounds.h[gottenPath] = _ws;
 		}
 	} catch( _g ) {
 		haxe_NativeStackTrace.lastError = _g;
@@ -133559,7 +133561,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 894964;
+	this.version = 436861;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -254197,7 +254199,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "58f9bf7ffb6beade55df2b4da4b801e505551213";
+Main.GIT_COMMIT = "752ecaf12c248e1e850ffb050ab53475b11880b6";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;

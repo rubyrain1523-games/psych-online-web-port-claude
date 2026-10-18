@@ -569,7 +569,15 @@ class Paths
 		try {
 			if(!currentTrackedSounds.exists(gottenPath))
 			#if MODS_ALLOWED
+				{
+				#if html5
+				var _ws = webSound(gottenPath);
+				if (_ws == null) _ws = Sound.fromFile('./' + gottenPath);
+				currentTrackedSounds.set(gottenPath, _ws);
+				#else
 				currentTrackedSounds.set(gottenPath, Sound.fromFile(#if !mobile './' + #end gottenPath));
+				#end
+				}
 			#else
 			{
 				var folder:String = '';
