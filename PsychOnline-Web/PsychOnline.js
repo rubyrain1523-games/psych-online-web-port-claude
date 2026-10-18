@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "14";
+	app.meta.h["build"] = "15";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -137108,7 +137108,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 725467;
+	this.version = 495469;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -146025,25 +146025,31 @@ online_GameClient._onJoin = function(err,room,isHost,address,onJoin) {
 			online_GameClient.reconnect();
 		}
 	});
-	online_backend_Waiter.putPersist(function() {
-		var tries = 50;
-		while(online_GameClient.getPlayerSelf() == null) {
-			haxe_Log.trace(online_GameClient.getPlayerSelf() == null,{ fileName : "source/online/GameClient.hx", lineNumber : 160, className : "online.GameClient", methodName : "_onJoin"});
-			if(tries-- < 0) {
+	var webTries = 150;
+	var webCheck = null;
+	webCheck = function() {
+		if(online_GameClient.room != room) {
+			return;
+		}
+		if(online_GameClient.getPlayerSelf() == null) {
+			webTries -= 1;
+			if(webTries + 1 < 0) {
 				online_gui_Alert.alert("Couldn't connect!","Client couldn't receive server's state data!");
 				onJoin(new io_colyseus_error_HttpException(-1,"no state data"));
 				online_GameClient.leaveRoom();
 				online_gui_LoadingScreen.toggle(false);
 				return;
 			}
-			Sys.sleep(0.2);
+			haxe_Timer.delay(webCheck,100);
+			return;
 		}
-		haxe_Log.trace("Joined!",{ fileName : "source/online/GameClient.hx", lineNumber : 171, className : "online.GameClient", methodName : "_onJoin"});
+		haxe_Log.trace("Joined!",{ fileName : "source/online/GameClient.hx", lineNumber : 175, className : "online.GameClient", methodName : "_onJoin"});
 		flixel_FlxG.autoPause = false;
 		if(onJoin != null) {
 			onJoin(null);
 		}
-	},{ fileName : "source/online/GameClient.hx", lineNumber : 156, className : "online.GameClient", methodName : "_onJoin"});
+	};
+	online_backend_Waiter.putPersist(webCheck,{ fileName : "source/online/GameClient.hx", lineNumber : 180, className : "online.GameClient", methodName : "_onJoin"});
 	online_backend_Waiter.pingServer = address;
 };
 online_GameClient.reconnect = function(debugReconnectDelay) {
@@ -146059,7 +146065,7 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 		return;
 	}
 	var reconnectToken = online_GameClient.room.reconnectionToken;
-	haxe_Log.trace("Reconnecting with Token: " + reconnectToken,{ fileName : "source/online/GameClient.hx", lineNumber : 198, className : "online.GameClient", methodName : "reconnect"});
+	haxe_Log.trace("Reconnecting with Token: " + reconnectToken,{ fileName : "source/online/GameClient.hx", lineNumber : 225, className : "online.GameClient", methodName : "reconnect"});
 	online_gui_Alert.alert("Reconnecting...");
 	try {
 		online_GameClient.room.teardown();
@@ -146080,10 +146086,10 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 					return;
 				}
 				if(err != null) {
-					haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 220, className : "online.GameClient", methodName : "reconnect"});
+					haxe_Log.trace(err.code + " - " + err.message,{ fileName : "source/online/GameClient.hx", lineNumber : 247, className : "online.GameClient", methodName : "reconnect"});
 					online_backend_Waiter.putPersist(function() {
 						online_gui_Alert.alert("Couldn't reconnect!","RECONNECT ERROR: " + online_util_ShitUtil.prettyStatus(err.code) + " - " + online_util_ShitUtil.readableError(err.message));
-					},{ fileName : "source/online/GameClient.hx", lineNumber : 221, className : "online.GameClient", methodName : "reconnect"});
+					},{ fileName : "source/online/GameClient.hx", lineNumber : 248, className : "online.GameClient", methodName : "reconnect"});
 					online_GameClient.leaveRoom();
 					return;
 				}
@@ -146096,12 +146102,12 @@ online_GameClient.reconnect = function(debugReconnectDelay) {
 					online_GameClient.sendPending();
 					online_backend_Waiter.putPersist(function() {
 						online_gui_Alert.alert("Reconnected!");
-					},{ fileName : "source/online/GameClient.hx", lineNumber : 235, className : "online.GameClient", methodName : "reconnect"});
+					},{ fileName : "source/online/GameClient.hx", lineNumber : 262, className : "online.GameClient", methodName : "reconnect"});
 				});
 			} catch( _g ) {
 				online_backend_Waiter.putPersist(function() {
 					online_gui_Alert.alert("Critically failed to reconnect!","RECONNECT ERROR: " + online_util_ShitUtil.prettyStatus(err.code) + " - " + online_util_ShitUtil.readableError(err.message));
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 241, className : "online.GameClient", methodName : "reconnect"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 268, className : "online.GameClient", methodName : "reconnect"});
 				online_GameClient.leaveRoom();
 			}
 		});
@@ -146147,7 +146153,7 @@ online_GameClient.leaveRoom = function(reason) {
 		if(reason != null) {
 			online_gui_Alert.alert("Disconnected!",StringTools.trim(reason) != "" ? reason : null);
 		}
-		haxe_Log.trace("Leaving the Room, Reason: " + reason,{ fileName : "source/online/GameClient.hx", lineNumber : 291, className : "online.GameClient", methodName : "leaveRoom"});
+		haxe_Log.trace("Leaving the Room, Reason: " + reason,{ fileName : "source/online/GameClient.hx", lineNumber : 318, className : "online.GameClient", methodName : "leaveRoom"});
 		flixel_FlxG.autoPause = backend_ClientPrefs.data.autoPause;
 		if(flixel_FlxG.game._nextState == null) {
 			var nextState = flixel_util_typeLimit_NextState.fromMaker(function() {
@@ -146177,7 +146183,7 @@ online_GameClient.leaveRoom = function(reason) {
 		online_GameClient.set_room(null);
 		online_GameClient.address = null;
 		online_GameClient.rpcClientRoomID = null;
-	},{ fileName : "source/online/GameClient.hx", lineNumber : 288, className : "online.GameClient", methodName : "leaveRoom"});
+	},{ fileName : "source/online/GameClient.hx", lineNumber : 315, className : "online.GameClient", methodName : "leaveRoom"});
 };
 online_GameClient.isConnected = function() {
 	if(online_GameClient.client == null) {
@@ -146251,7 +146257,7 @@ online_GameClient.clearOnMessage = function() {
 				});
 			}
 			flixel_FlxG.sound.music.set_volume(0);
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 368, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 395, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 	online_GameClient.room.onMessage("alert",function(message) {
 		if(message == null) {
@@ -146280,13 +146286,13 @@ online_GameClient.clearOnMessage = function() {
 			} else {
 				online_GameClient.send("setSkin",null);
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 404, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 431, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 	online_GameClient.room.onMessage("checkChart",function(message) {
 		online_backend_Waiter.putPersist(function() {
 			try {
 				var hash = haxe_crypto_Md5.encode(backend_Song.loadRawSong(online_GameClient.room.get_state().song,online_GameClient.room.get_state().folder));
-				haxe_Log.trace("verifying song: " + online_GameClient.room.get_state().song + " | " + online_GameClient.room.get_state().folder + " : " + hash,{ fileName : "source/online/GameClient.hx", lineNumber : 421, className : "online.GameClient", methodName : "clearOnMessage"});
+				haxe_Log.trace("verifying song: " + online_GameClient.room.get_state().song + " | " + online_GameClient.room.get_state().folder + " : " + hash,{ fileName : "source/online/GameClient.hx", lineNumber : 448, className : "online.GameClient", methodName : "clearOnMessage"});
 				online_GameClient.send("verifyChart",hash);
 				states_FreeplayState.destroyFreeplayVocals();
 				var nextState = flixel_util_typeLimit_NextState.fromMaker(function() {
@@ -146308,7 +146314,7 @@ online_GameClient.clearOnMessage = function() {
 				var exc = haxe_Exception.caught(_g).unwrap();
 				Sys.println(exc);
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 418, className : "online.GameClient", methodName : "clearOnMessage"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 445, className : "online.GameClient", methodName : "clearOnMessage"});
 	});
 };
 online_GameClient.clearCallbacks = function(irefSchema,fieldNameOrOperation) {
@@ -146363,11 +146369,11 @@ online_GameClient.send = function(type,message) {
 				var exc = haxe_Exception.caught(_g);
 				online_GameClient._pendingMessages.push([type,message]);
 				if(!online_GameClient.reconnecting) {
-					haxe_Log.trace(Std.string(exc) + " : FAILED TO SEND: " + Std.string(type) + " -> " + Std.string(message),{ fileName : "source/online/GameClient.hx", lineNumber : 495, className : "online.GameClient", methodName : "send"});
+					haxe_Log.trace(Std.string(exc) + " : FAILED TO SEND: " + Std.string(type) + " -> " + Std.string(message),{ fileName : "source/online/GameClient.hx", lineNumber : 522, className : "online.GameClient", methodName : "send"});
 					online_GameClient.reconnect();
 				}
 			}
-		},{ fileName : "source/online/GameClient.hx", lineNumber : 487, className : "online.GameClient", methodName : "send"});
+		},{ fileName : "source/online/GameClient.hx", lineNumber : 514, className : "online.GameClient", methodName : "send"});
 	}
 };
 online_GameClient.get_isOwner = function() {
@@ -146463,14 +146469,14 @@ online_GameClient.getServerPlayerCount = function(address,callback) {
 			if(callback != null) {
 				online_backend_Waiter.put(function() {
 					callback(Std.parseInt(data));
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 599, className : "online.GameClient", methodName : "getServerPlayerCount"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 626, className : "online.GameClient", methodName : "getServerPlayerCount"});
 			}
 		};
 		http.onError = function(error) {
 			if(callback != null) {
 				online_backend_Waiter.put(function() {
 					callback(null);
-				},{ fileName : "source/online/GameClient.hx", lineNumber : 606, className : "online.GameClient", methodName : "getServerPlayerCount"});
+				},{ fileName : "source/online/GameClient.hx", lineNumber : 633, className : "online.GameClient", methodName : "getServerPlayerCount"});
 			}
 		};
 		http.request();
@@ -146619,7 +146625,7 @@ online_GameClient.updateAddresses = function() {
 	};
 	http.onError = function(error) {
 		online_GameClient.serverAddresses = ["wss://funkin.sniro.boo"];
-		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 756, className : "online.GameClient", methodName : "updateAddresses"});
+		haxe_Log.trace("error: " + error,{ fileName : "source/online/GameClient.hx", lineNumber : 783, className : "online.GameClient", methodName : "updateAddresses"});
 		online_GameClient.hasAddresses = false;
 		online_network_FunkinNetwork.client = new online_http_HTTPHandler(haxe_ds_Either.Right(online_GameClient.addressToUrl(online_GameClient.get_networkServerAddress())));
 	};
@@ -257746,7 +257752,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "4b650754417cdc92fa0ec32aedffea0549ab28dc";
+Main.GIT_COMMIT = "39f00c7bfcfa83cb20190f6946905e278de8ecd6";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;

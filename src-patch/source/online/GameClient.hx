@@ -153,6 +153,32 @@ class GameClient {
 			}
 		}
 
+		#if html5
+		// the browser is single-threaded: blocking here would stop the websocket from ever delivering the state, so poll with timers instead
+		var webTries = 150;
+		var webCheck:Void->Void = null;
+		webCheck = () -> {
+			if (GameClient.room != room) // left or switched rooms meanwhile
+				return;
+			if (getPlayerSelf() == null) {
+				if (webTries-- < 0) {
+					Alert.alert("Couldn't connect!", "Client couldn't receive server's state data!");
+					onJoin(new Error(-1, 'no state data'));
+					leaveRoom();
+					LoadingScreen.toggle(false);
+					return;
+				}
+				haxe.Timer.delay(webCheck, 100);
+				return;
+			}
+
+			trace("Joined!");
+			FlxG.autoPause = false;
+			if (onJoin != null)
+				onJoin(null);
+		};
+		Waiter.putPersist(webCheck);
+		#else
 		Waiter.putPersist(() -> {
 			var tries = 50;
 			// great stuff colyseus
@@ -175,6 +201,7 @@ class GameClient {
 			if (onJoin != null)
 				onJoin(null);
 		});
+		#end
 
 		//maybe just make it global
 		//if (address.contains(".onrender.com")) {
