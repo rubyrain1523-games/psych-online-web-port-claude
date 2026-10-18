@@ -286,7 +286,7 @@ class Paths
 			return currentTrackedAssets.get(file);
 		}
 		else if (FileSystem.exists(file))
-			bitmap = BitmapData.fromFile(file);
+			bitmap = backend.WebImage.fromFile(file);
 		else
 		#end
 		{

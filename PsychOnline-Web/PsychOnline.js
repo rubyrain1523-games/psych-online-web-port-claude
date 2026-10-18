@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "13";
+	app.meta.h["build"] = "14";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -12317,7 +12317,7 @@ backend_Paths.image = function(key,library,allowGPU) {
 		backend_Paths.localTrackedAssets.push(file);
 		return backend_Paths.currentTrackedAssets.h[file];
 	} else if(sys_FileSystem.exists(file)) {
-		bitmap = openfl_display_BitmapData.fromFile(file);
+		bitmap = backend_WebImage.fromFile(file);
 	} else {
 		file = backend_Paths.getPath("images/" + key + ".png","IMAGE",library);
 		if(Object.prototype.hasOwnProperty.call(backend_Paths.currentTrackedAssets.h,file)) {
@@ -16903,6 +16903,72 @@ backend_StageData.validateVisibility = function(filters) {
 	} else {
 		return true;
 	}
+};
+var backend_WebImage = function() { };
+$hxClasses["backend.WebImage"] = backend_WebImage;
+backend_WebImage.__name__ = "backend.WebImage";
+backend_WebImage.fromBytes = function(bytes) {
+	if(bytes == null) {
+		return null;
+	}
+	try {
+		var d = new format_png_Reader(new haxe_io_BytesInput(bytes)).read();
+		var h = format_png_Tools.getHeader(d);
+		var bgra = format_png_Tools.extract32(d);
+		var w = h.width;
+		var ht = h.height;
+		var elements = w * ht * 4;
+		var array = null;
+		var vector = null;
+		var view = null;
+		var buffer = null;
+		var len = null;
+		var this1;
+		if(elements != null) {
+			this1 = new Uint8Array(elements);
+		} else if(array != null) {
+			this1 = new Uint8Array(array);
+		} else if(vector != null) {
+			this1 = new Uint8Array(vector.__array);
+		} else if(view != null) {
+			this1 = new Uint8Array(view);
+		} else if(buffer != null) {
+			if(len == null) {
+				this1 = new Uint8Array(buffer,0);
+			} else {
+				this1 = new Uint8Array(buffer,0,len);
+			}
+		} else {
+			this1 = null;
+		}
+		var data = this1;
+		var i = 0;
+		var n = w * ht * 4;
+		while(i < n) {
+			data[i] = bgra.b[i + 2];
+			data[i + 1] = bgra.b[i + 1];
+			data[i + 2] = bgra.b[i];
+			data[i + 3] = bgra.b[i + 3];
+			i += 4;
+		}
+		var buf = new lime_graphics_ImageBuffer(data,w,ht);
+		buf.format = 0;
+		buf.premultiplied = false;
+		var img = new lime_graphics_Image(buf);
+		img.set_premultiplied(true);
+		return openfl_display_BitmapData.fromImage(img);
+	} catch( _g ) {
+		haxe_NativeStackTrace.lastError = _g;
+		var e = haxe_Exception.caught(_g).unwrap();
+		haxe_Log.trace("WebImage: could not decode image (" + Std.string(e) + ")",{ fileName : "source/backend/WebImage.hx", lineNumber : 37, className : "backend.WebImage", methodName : "fromBytes"});
+		return null;
+	}
+};
+backend_WebImage.fromFile = function(path) {
+	if(path == null || !sys_FileSystem.exists(path)) {
+		return null;
+	}
+	return backend_WebImage.fromBytes(sys_io_File.getBytes(path));
 };
 var backend_WeekData = function(weekFile,fileName) {
 	this.folder = "";
@@ -75343,6 +75409,148 @@ openfl_utils_ByteArrayData.fromBytes = function(bytes) {
 	result.__fromBytes(bytes);
 	return result;
 };
+openfl_utils_ByteArrayData.unwrapAMFValue = function(val) {
+	switch(val._hx_index) {
+	case 0:
+		var f = val.f;
+		return f;
+	case 1:
+		var b = val.b;
+		return b;
+	case 2:
+		var s = val.s;
+		return s;
+	case 3:
+		var _g = val.size;
+		var vmap = val.fields;
+		var obj = { };
+		var h = vmap.h;
+		var name_h = h;
+		var name_keys = Object.keys(h);
+		var name_length = name_keys.length;
+		var name_current = 0;
+		while(name_current < name_length) {
+			var name = name_keys[name_current++];
+			obj[name] = openfl_utils_ByteArrayData.unwrapAMFValue(vmap.h[name]);
+		}
+		return obj;
+	case 4:
+		var d = val.d;
+		return d;
+	case 5:
+		return null;
+	case 6:
+		return null;
+	case 7:
+		var vals = val.values;
+		var f = openfl_utils_ByteArrayData.unwrapAMFValue;
+		var result = new Array(vals.length);
+		var _g = 0;
+		var _g1 = vals.length;
+		while(_g < _g1) {
+			var i = _g++;
+			result[i] = f(vals[i]);
+		}
+		return result;
+	}
+};
+openfl_utils_ByteArrayData.unwrapAMF3Value = function(val) {
+	switch(val._hx_index) {
+	case 0:
+		return null;
+	case 1:
+		return null;
+	case 2:
+		var b = val.b;
+		return b;
+	case 3:
+		var n = val.i;
+		return n;
+	case 4:
+		var f = val.f;
+		return f;
+	case 5:
+		var s = val.s;
+		return s;
+	case 6:
+		var d = val.d;
+		return d;
+	case 7:
+		var _g = val.size;
+		var _g = val.classname;
+		var vmap = val.fields;
+		var obj = { };
+		var h = vmap.h;
+		var name_h = h;
+		var name_keys = Object.keys(h);
+		var name_length = name_keys.length;
+		var name_current = 0;
+		while(name_current < name_length) {
+			var name = name_keys[name_current++];
+			obj[name] = openfl_utils_ByteArrayData.unwrapAMF3Value(vmap.h[name]);
+		}
+		return obj;
+	case 8:
+		var _g = val.extra;
+		var vals = val.values;
+		var f = openfl_utils_ByteArrayData.unwrapAMF3Value;
+		var result = new Array(vals.length);
+		var _g = 0;
+		var _g1 = vals.length;
+		while(_g < _g1) {
+			var i = _g++;
+			result[i] = f(vals[i]);
+		}
+		return result;
+	case 9:
+		var _g = val.classname;
+		var vals = val.values;
+		var f = openfl_utils_ByteArrayData.unwrapAMF3Value;
+		var length = vals.length;
+		var r = new Array(length);
+		var len = length;
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var i = _g++;
+			var v = f(vals[i]);
+			r[i] = v;
+		}
+		return r;
+	case 10:
+		var xml = val.x;
+		return xml;
+	case 11:
+		var b = val.b;
+		return openfl_utils_ByteArray.fromBytes(b);
+	case 12:
+		var vmap = val.m;
+		var map = null;
+		var key = vmap.keys();
+		while(key.hasNext()) {
+			var key1 = key.next();
+			if(map == null) {
+				switch(key1._hx_index) {
+				case 3:
+					var _g = key1.i;
+					map = new haxe_ds_IntMap();
+					break;
+				case 5:
+					var _g1 = key1.s;
+					map = new haxe_ds_StringMap();
+					break;
+				default:
+					map = new haxe_ds_ObjectMap();
+				}
+			}
+			map.set(openfl_utils_ByteArrayData.unwrapAMF3Value(key1),openfl_utils_ByteArrayData.unwrapAMF3Value(vmap.get(key1)));
+		}
+		if(map == null) {
+			map = new haxe_ds_StringMap();
+		}
+		return map;
+	}
+};
 openfl_utils_ByteArrayData.get_defaultEndian = function() {
 	if(openfl_utils_ByteArrayData.__defaultEndian == null) {
 		if(lime_system_System.get_endianness() == lime_system_Endian.LITTLE_ENDIAN) {
@@ -75480,6 +75688,18 @@ openfl_utils_ByteArrayData.prototype = $extend(haxe_io_Bytes.prototype,{
 	}
 	,readObject: function() {
 		switch(this.objectEncoding) {
+		case 0:
+			var input = new haxe_io_BytesInput(this,this.position);
+			var reader = new format_amf_Reader(input);
+			var data = openfl_utils_ByteArrayData.unwrapAMFValue(reader.read());
+			this.position = input.pos;
+			return data;
+		case 3:
+			var input = new haxe_io_BytesInput(this,this.position);
+			var reader = new format_amf3_Reader(input);
+			var data = openfl_utils_ByteArrayData.unwrapAMF3Value(reader.read());
+			this.position = input.pos;
+			return data;
 		case 10:
 			var data = this.readUTF();
 			return haxe_Unserializer.run(data);
@@ -75640,6 +75860,20 @@ openfl_utils_ByteArrayData.prototype = $extend(haxe_io_Bytes.prototype,{
 	}
 	,writeObject: function(object) {
 		switch(this.objectEncoding) {
+		case 0:
+			var value = format_amf_Tools.encode(object);
+			var output = new haxe_io_BytesOutput();
+			var writer = new format_amf_Writer(output);
+			writer.write(value);
+			this.writeBytes(openfl_utils_ByteArray.fromBytes(output.getBytes()));
+			break;
+		case 3:
+			var value = format_amf3_Tools.encode(object);
+			var output = new haxe_io_BytesOutput();
+			var writer = new format_amf3_Writer(output);
+			writer.write(value);
+			this.writeBytes(openfl_utils_ByteArray.fromBytes(output.getBytes()));
+			break;
 		case 10:
 			var value = haxe_Serializer.run(object);
 			this.writeUTF(value);
@@ -98808,6 +99042,3280 @@ flxanimate_zip_Zip.prototype = {
 	}
 	,__class__: flxanimate_zip_Zip
 };
+var format_amf_Reader = function(i) {
+	this.i = i;
+	i.set_bigEndian(true);
+};
+$hxClasses["format.amf.Reader"] = format_amf_Reader;
+format_amf_Reader.__name__ = "format.amf.Reader";
+format_amf_Reader.prototype = {
+	i: null
+	,readObject: function() {
+		var h = new haxe_ds_StringMap();
+		while(true) {
+			var c1 = this.i.readByte();
+			var c2 = this.i.readByte();
+			var name = this.i.readString(c1 << 8 | c2);
+			var k = this.i.readByte();
+			if(k == 9) {
+				break;
+			}
+			var value = this.readWithCode(k);
+			h.h[name] = value;
+		}
+		return h;
+	}
+	,readArray: function(n) {
+		var a = [];
+		var _g = 0;
+		var _g1 = n;
+		while(_g < _g1) {
+			var i = _g++;
+			a.push(this.read());
+		}
+		return a;
+	}
+	,readInt: function() {
+		return this.i.readInt32();
+	}
+	,readWithCode: function(id) {
+		var i = this.i;
+		switch(id) {
+		case 0:
+			return format_amf_Value.ANumber(i.readDouble());
+		case 1:
+			var tmp;
+			switch(i.readByte()) {
+			case 0:
+				tmp = false;
+				break;
+			case 1:
+				tmp = true;
+				break;
+			default:
+				throw haxe_Exception.thrown("Invalid AMF");
+			}
+			return format_amf_Value.ABool(tmp);
+		case 2:
+			return format_amf_Value.AString(i.readString(i.readUInt16()));
+		case 5:
+			return format_amf_Value.ANull;
+		case 6:
+			return format_amf_Value.AUndefined;
+		case 7:
+			throw haxe_Exception.thrown("Not supported : Reference");
+		case 3:case 8:
+			var ismixed = id == 8;
+			var size = ismixed ? this.i.readInt32() : null;
+			return format_amf_Value.AObject(this.readObject(),size);
+		case 10:
+			return format_amf_Value.AArray(this.readArray(this.i.readInt32()));
+		case 11:
+			var time_ms = i.readDouble();
+			var tz_min = i.readUInt16();
+			return format_amf_Value.ADate(new Date(time_ms + tz_min * 60 * 1000.0));
+		case 12:
+			return format_amf_Value.AString(i.readString(this.i.readInt32()));
+		default:
+			throw haxe_Exception.thrown("Unknown AMF " + id);
+		}
+	}
+	,read: function() {
+		return this.readWithCode(this.i.readByte());
+	}
+	,__class__: format_amf_Reader
+};
+var format_amf_Tools = function() { };
+$hxClasses["format.amf.Tools"] = format_amf_Tools;
+format_amf_Tools.__name__ = "format.amf.Tools";
+format_amf_Tools.encode = function(o) {
+	var _g = Type.typeof(o);
+	switch(_g._hx_index) {
+	case 0:
+		return format_amf_Value.ANull;
+	case 1:
+		return format_amf_Value.ANumber(o);
+	case 2:
+		return format_amf_Value.ANumber(o);
+	case 3:
+		return format_amf_Value.ABool(o);
+	case 4:
+		var h = new haxe_ds_StringMap();
+		var _g1 = 0;
+		var _g2 = Reflect.fields(o);
+		while(_g1 < _g2.length) {
+			var f = _g2[_g1];
+			++_g1;
+			var value = format_amf_Tools.encode(Reflect.field(o,f));
+			h.h[f] = value;
+		}
+		return format_amf_Value.AObject(h);
+	case 6:
+		var c = _g.c;
+		switch(c) {
+		case Array:
+			var o1 = o;
+			var a = [];
+			var _g = 0;
+			while(_g < o1.length) {
+				var v = o1[_g];
+				++_g;
+				a.push(format_amf_Tools.encode(v));
+			}
+			return format_amf_Value.AArray(a);
+		case String:
+			return format_amf_Value.AString(o);
+		case haxe_ds_StringMap:
+			var o1 = o;
+			var h = new haxe_ds_StringMap();
+			var h1 = o1.h;
+			var f_h = h1;
+			var f_keys = Object.keys(h1);
+			var f_length = f_keys.length;
+			var f_current = 0;
+			while(f_current < f_length) {
+				var f = f_keys[f_current++];
+				var value = format_amf_Tools.encode(o1.h[f]);
+				h.h[f] = value;
+			}
+			return format_amf_Value.AObject(h);
+		default:
+			throw haxe_Exception.thrown("Can't encode instance of " + c.__name__);
+		}
+		break;
+	default:
+		throw haxe_Exception.thrown("Can't encode " + Std.string(o));
+	}
+};
+format_amf_Tools.number = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 0) {
+		var n = a.f;
+		return n;
+	} else {
+		return null;
+	}
+};
+format_amf_Tools.string = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 2) {
+		var s = a.s;
+		return s;
+	} else {
+		return null;
+	}
+};
+format_amf_Tools.object = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 3) {
+		var _g = a.size;
+		var o = a.fields;
+		return o;
+	} else {
+		return null;
+	}
+};
+format_amf_Tools.abool = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 1) {
+		var b = a.b;
+		return b;
+	} else {
+		return null;
+	}
+};
+format_amf_Tools.array = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 7) {
+		var a1 = a.values;
+		return a1;
+	} else {
+		return null;
+	}
+};
+var format_amf_Value = $hxEnums["format.amf.Value"] = { __ename__:"format.amf.Value",__constructs__:null
+	,ANumber: ($_=function(f) { return {_hx_index:0,f:f,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="ANumber",$_.__params__ = ["f"],$_)
+	,ABool: ($_=function(b) { return {_hx_index:1,b:b,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="ABool",$_.__params__ = ["b"],$_)
+	,AString: ($_=function(s) { return {_hx_index:2,s:s,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="AString",$_.__params__ = ["s"],$_)
+	,AObject: ($_=function(fields,size) { return {_hx_index:3,fields:fields,size:size,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="AObject",$_.__params__ = ["fields","size"],$_)
+	,ADate: ($_=function(d) { return {_hx_index:4,d:d,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="ADate",$_.__params__ = ["d"],$_)
+	,AUndefined: {_hx_name:"AUndefined",_hx_index:5,__enum__:"format.amf.Value",toString:$estr}
+	,ANull: {_hx_name:"ANull",_hx_index:6,__enum__:"format.amf.Value",toString:$estr}
+	,AArray: ($_=function(values) { return {_hx_index:7,values:values,__enum__:"format.amf.Value",toString:$estr}; },$_._hx_name="AArray",$_.__params__ = ["values"],$_)
+};
+format_amf_Value.__constructs__ = [format_amf_Value.ANumber,format_amf_Value.ABool,format_amf_Value.AString,format_amf_Value.AObject,format_amf_Value.ADate,format_amf_Value.AUndefined,format_amf_Value.ANull,format_amf_Value.AArray];
+var format_amf_Writer = function(o) {
+	this.o = o;
+	o.set_bigEndian(true);
+};
+$hxClasses["format.amf.Writer"] = format_amf_Writer;
+format_amf_Writer.__name__ = "format.amf.Writer";
+format_amf_Writer.prototype = {
+	o: null
+	,write: function(v) {
+		var o = this.o;
+		switch(v._hx_index) {
+		case 0:
+			var n = v.f;
+			o.writeByte(0);
+			o.writeDouble(n);
+			break;
+		case 1:
+			var b = v.b;
+			o.writeByte(1);
+			o.writeByte(b ? 1 : 0);
+			break;
+		case 2:
+			var s = v.s;
+			if(s.length <= 65535) {
+				o.writeByte(2);
+				o.writeUInt16(s.length);
+			} else {
+				o.writeByte(12);
+				o.writeInt32(s.length);
+			}
+			o.writeString(s);
+			break;
+		case 3:
+			var h = v.fields;
+			var size = v.size;
+			if(size == null) {
+				o.writeByte(3);
+			} else {
+				o.writeByte(8);
+				o.writeInt32(size);
+			}
+			var h1 = h.h;
+			var f_h = h1;
+			var f_keys = Object.keys(h1);
+			var f_length = f_keys.length;
+			var f_current = 0;
+			while(f_current < f_length) {
+				var f = f_keys[f_current++];
+				o.writeUInt16(f.length);
+				o.writeString(f);
+				this.write(h.h[f]);
+			}
+			o.writeByte(0);
+			o.writeByte(0);
+			o.writeByte(9);
+			break;
+		case 4:
+			var d = v.d;
+			o.writeByte(11);
+			o.writeDouble(d.getTime());
+			o.writeUInt16(0);
+			break;
+		case 5:
+			o.writeByte(6);
+			break;
+		case 6:
+			o.writeByte(5);
+			break;
+		case 7:
+			var a = v.values;
+			o.writeByte(10);
+			o.writeInt32(a.length);
+			var _g = 0;
+			while(_g < a.length) {
+				var f = a[_g];
+				++_g;
+				this.write(f);
+			}
+			break;
+		}
+	}
+	,__class__: format_amf_Writer
+};
+var format_amf3_Amf3Array = function(initA,initExtra) {
+	this.a = initA;
+	this.extra = initExtra;
+};
+$hxClasses["format.amf3.Amf3Array"] = format_amf3_Amf3Array;
+format_amf3_Amf3Array.__name__ = "format.amf3.Amf3Array";
+format_amf3_Amf3Array.prototype = {
+	a: null
+	,extra: null
+	,__class__: format_amf3_Amf3Array
+};
+var format_amf3_Reader = function(i) {
+	this.complexObjectsTable = [];
+	this.objectTraitsTable = [];
+	this.stringTable = [];
+	this.i = i;
+	i.set_bigEndian(true);
+};
+$hxClasses["format.amf3.Reader"] = format_amf3_Reader;
+format_amf3_Reader.__name__ = "format.amf3.Reader";
+format_amf3_Reader.prototype = {
+	complexObjectsTable: null
+	,objectTraitsTable: null
+	,stringTable: null
+	,i: null
+	,readObject: function() {
+		var dyn = false;
+		var isExternalizable = false;
+		var className = null;
+		var sealedMemberNames = [];
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		} else if((n & 3) == 1) {
+			n >>= 2;
+			var refTraits = this.objectTraitsTable[n];
+			dyn = refTraits.isDynamic;
+			isExternalizable = refTraits.isExternalizable;
+			className = refTraits.className;
+			sealedMemberNames = refTraits.sealedMemberNames;
+		} else if((n & 7) == 3) {
+			dyn = (n >> 3 & 1) == 1;
+			n >>= 4;
+			className = this.readString();
+			var _g = 0;
+			var _g1 = n;
+			while(_g < _g1) {
+				var j = _g++;
+				sealedMemberNames.push(format_amf3_Tools.decode(this.readString()));
+			}
+			this.objectTraitsTable.push({ isExternalizable : isExternalizable, isDynamic : dyn, className : className, sealedMemberNames : sealedMemberNames});
+		} else if((n & 7) == 7) {
+			isExternalizable = true;
+			className = this.readString();
+			haxe_Log.trace(format_amf3_Tools.decode(className),{ fileName : "format/amf3/Reader.hx", lineNumber : 108, className : "format.amf3.Reader", methodName : "readObject"});
+		} else {
+			throw haxe_Exception.thrown("Invalid object traits");
+		}
+		var h = new haxe_ds_StringMap();
+		var ret = format_amf3_Value.AObject(h,null,className != null ? format_amf3_Tools.decode(className) : null);
+		this.complexObjectsTable.push(ret);
+		if(!isExternalizable) {
+			var _g = 0;
+			var _g1 = sealedMemberNames.length;
+			while(_g < _g1) {
+				var j = _g++;
+				var value = this.read();
+				h.h[sealedMemberNames[j]] = value;
+			}
+			if(dyn) {
+				var s;
+				while(true) {
+					s = format_amf3_Tools.decode(this.readString());
+					if(s == "") {
+						break;
+					}
+					var value = this.read();
+					h.h[s] = value;
+				}
+			}
+		} else {
+			throw haxe_Exception.thrown("Externalizable not supported");
+		}
+		return ret;
+	}
+	,readMap: function() {
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		}
+		n >>= 1;
+		var h = new haxe_ds_EnumValueMap();
+		var ret = format_amf3_Value.AMap(h);
+		this.complexObjectsTable.push(ret);
+		this.i.readByte();
+		var _g = 0;
+		var _g1 = n;
+		while(_g < _g1) {
+			var i = _g++;
+			h.set(this.read(),this.read());
+		}
+		return ret;
+	}
+	,readArray: function() {
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		}
+		n >>= 1;
+		var a = [];
+		var m = new haxe_ds_StringMap();
+		var ret = format_amf3_Value.AArray(a,m);
+		this.complexObjectsTable.push(ret);
+		var assocName = format_amf3_Tools.decode(this.readString());
+		while(assocName.length != 0) {
+			var v = this.read();
+			m.h[assocName] = v;
+			assocName = format_amf3_Tools.decode(this.readString());
+		}
+		var _g = 0;
+		var _g1 = n;
+		while(_g < _g1) {
+			var i = _g++;
+			a.push(this.read());
+		}
+		return ret;
+	}
+	,readIntVector: function() {
+		var header = this.readInt();
+		if((header & 1) == 0) {
+			return this.complexObjectsTable[header >> 1];
+		}
+		var len = header >> 1;
+		var fixed = this.i.readByte() != 0;
+		var a;
+		if(fixed) {
+			a = new Array(len);
+		} else {
+			a = [];
+		}
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var r = _g++;
+			a[r] = format_amf3_Value.AInt(this.i.readInt32());
+		}
+		var ret = fixed ? format_amf3_Value.AVector(a,"Int") : format_amf3_Value.AArray(a);
+		this.complexObjectsTable.push(ret);
+		return ret;
+	}
+	,readDoubleVector: function() {
+		var header = this.readInt();
+		if((header & 1) == 0) {
+			return this.complexObjectsTable[header >> 1];
+		}
+		var len = header >> 1;
+		var fixed = this.i.readByte() != 0;
+		var a;
+		if(fixed) {
+			a = new Array(len);
+		} else {
+			a = [];
+		}
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var r = _g++;
+			a[r] = format_amf3_Value.ANumber(this.i.readDouble());
+		}
+		var ret = fixed ? format_amf3_Value.AVector(a,"Number") : format_amf3_Value.AArray(a);
+		this.complexObjectsTable.push(ret);
+		return ret;
+	}
+	,readObjectVector: function() {
+		var header = this.readInt();
+		if((header & 1) == 0) {
+			return this.complexObjectsTable[header >> 1];
+		}
+		var len = header >> 1;
+		var fixed = this.i.readByte() != 0;
+		var objectTypeName = format_amf3_Tools.decode(this.readString());
+		haxe_Log.trace("readObjectVector name:" + objectTypeName,{ fileName : "format/amf3/Reader.hx", lineNumber : 259, className : "format.amf3.Reader", methodName : "readObjectVector"});
+		var VC = $hxClasses[objectTypeName];
+		haxe_Log.trace("VC:" + Std.string(VC),{ fileName : "format/amf3/Reader.hx", lineNumber : 261, className : "format.amf3.Reader", methodName : "readObjectVector"});
+		var a;
+		var ret;
+		if(fixed) {
+			a = new Array(len);
+			ret = format_amf3_Value.AVector(a,objectTypeName);
+		} else {
+			a = [];
+			ret = format_amf3_Value.AArray(a);
+		}
+		this.complexObjectsTable.push(ret);
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var r = _g++;
+			a[r] = this.read();
+		}
+		return ret;
+	}
+	,readBytes: function() {
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		}
+		n >>= 1;
+		var b = new haxe_io_Bytes(new ArrayBuffer(n));
+		var _g = 0;
+		var _g1 = n;
+		while(_g < _g1) {
+			var j = _g++;
+			var v = this.i.readByte();
+			b.b[j] = v & 255;
+		}
+		var ret = format_amf3_Value.ABytes(b);
+		this.complexObjectsTable.push(ret);
+		return ret;
+	}
+	,readInt: function(signExtend,preShift) {
+		if(preShift == null) {
+			preShift = 0;
+		}
+		if(signExtend == null) {
+			signExtend = false;
+		}
+		var c = this.i.readByte() & 255;
+		if(c < 128) {
+			return c >> preShift;
+		}
+		var ret = (c & 127) << 7;
+		c = this.i.readByte() & 255;
+		if(c < 128) {
+			return (ret | c) >> preShift;
+		}
+		ret |= c & 127;
+		ret <<= 7;
+		c = this.i.readByte() & 255;
+		if(c < 128) {
+			return (ret | c) >> preShift;
+		}
+		ret |= c & 127;
+		ret <<= 8;
+		c = this.i.readByte() & 255;
+		ret |= c;
+		if(signExtend && (ret & 268435456) != 0) {
+			ret |= -536870912;
+		}
+		return ret >> preShift;
+	}
+	,readString: function() {
+		var header = this.readInt();
+		if((header & 1) == 0) {
+			var strRefIdx = header >> 1;
+			return this.stringTable[strRefIdx];
+		}
+		var len = header >> 1;
+		return this.readStringNoHeader(len);
+	}
+	,readStringNoHeader: function(len) {
+		if(len == 0) {
+			return format_amf3_Value.AString("");
+		}
+		var ret = format_amf3_Value.AString(this.i.readString(len,haxe_io_Encoding.UTF8));
+		this.stringTable.push(ret);
+		return ret;
+	}
+	,readDate: function() {
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		}
+		var date = new Date(this.i.readDouble());
+		var ret = format_amf3_Value.ADate(date);
+		this.complexObjectsTable.push(ret);
+		return ret;
+	}
+	,readXml: function() {
+		var n = this.readInt();
+		if((n & 1) == 0) {
+			return this.complexObjectsTable[n >> 1];
+		}
+		n >>= 1;
+		var xml = Xml.parse(format_amf3_Tools.decode(this.readStringNoHeader(n)));
+		var ret = format_amf3_Value.AXml(xml);
+		this.complexObjectsTable.push(ret);
+		return ret;
+	}
+	,readWithCode: function(id) {
+		var i = this.i;
+		switch(id) {
+		case 0:
+			return format_amf3_Value.AUndefined;
+		case 1:
+			return format_amf3_Value.ANull;
+		case 2:
+			return format_amf3_Value.ABool(false);
+		case 3:
+			return format_amf3_Value.ABool(true);
+		case 4:
+			return format_amf3_Value.AInt(this.readInt(true));
+		case 5:
+			return format_amf3_Value.ANumber(i.readDouble());
+		case 6:
+			return this.readString();
+		case 7:
+			throw haxe_Exception.thrown("XMLDocument unsupported");
+		case 8:
+			return this.readDate();
+		case 9:
+			return this.readArray();
+		case 10:
+			return this.readObject();
+		case 11:
+			return this.readXml();
+		case 12:
+			return this.readBytes();
+		case 13:case 14:
+			return this.readIntVector();
+		case 15:
+			return this.readDoubleVector();
+		case 16:
+			return this.readObjectVector();
+		case 17:
+			return this.readMap();
+		default:
+			throw haxe_Exception.thrown("Unknown AMF " + id);
+		}
+	}
+	,read: function() {
+		return this.readWithCode(this.i.readByte());
+	}
+	,__class__: format_amf3_Reader
+};
+var format_amf3_Tools = function() { };
+$hxClasses["format.amf3.Tools"] = format_amf3_Tools;
+format_amf3_Tools.__name__ = "format.amf3.Tools";
+format_amf3_Tools.encode = function(o) {
+	var _g = Type.typeof(o);
+	switch(_g._hx_index) {
+	case 0:
+		return format_amf3_Value.ANull;
+	case 1:
+		return format_amf3_Value.AInt(o);
+	case 2:
+		return format_amf3_Value.ANumber(o);
+	case 3:
+		return format_amf3_Value.ABool(o);
+	case 4:
+		var h = new haxe_ds_StringMap();
+		var _g1 = 0;
+		var _g2 = Reflect.fields(o);
+		while(_g1 < _g2.length) {
+			var f = _g2[_g1];
+			++_g1;
+			var value = format_amf3_Tools.encode(Reflect.field(o,f));
+			h.h[f] = value;
+		}
+		return format_amf3_Value.AObject(h,null,null);
+	case 6:
+		var c = _g.c;
+		switch(c) {
+		case Array:
+			var o1 = o;
+			var a = [];
+			var _g = 0;
+			while(_g < o1.length) {
+				var v = o1[_g];
+				++_g;
+				a.push(format_amf3_Tools.encode(v));
+			}
+			return format_amf3_Value.AArray(a);
+		case Date:
+			return format_amf3_Value.ADate(o);
+		case String:
+			return format_amf3_Value.AString(o);
+		case Xml:
+			return format_amf3_Value.AXml(o);
+		case format_amf3_Amf3Array:
+			var o1 = o;
+			var a = [];
+			var m = new haxe_ds_StringMap();
+			var _g = 0;
+			var _g1 = o1.a;
+			while(_g < _g1.length) {
+				var v = _g1[_g];
+				++_g;
+				a.push(format_amf3_Tools.encode(v));
+			}
+			var h = o1.extra.h;
+			var k_h = h;
+			var k_keys = Object.keys(h);
+			var k_length = k_keys.length;
+			var k_current = 0;
+			while(k_current < k_length) {
+				var k = k_h[k_keys[k_current++]];
+				var v = format_amf3_Tools.encode(o1.extra.h[k]);
+				m.h[k] = v;
+			}
+			return format_amf3_Value.AArray(a,m);
+		case haxe_ds_IntMap:case haxe_ds_ObjectMap:case haxe_ds_StringMap:
+			var o1 = o;
+			var h = new haxe_ds_EnumValueMap();
+			var h1 = o1.h;
+			var f_h = h1;
+			var f_keys = Object.keys(h1);
+			var f_length = f_keys.length;
+			var f_current = 0;
+			while(f_current < f_length) {
+				var f = f_keys[f_current++];
+				h.set(format_amf3_Tools.encode(f),format_amf3_Tools.encode(o1.h[f]));
+			}
+			return format_amf3_Value.AMap(h);
+		case haxe_io_Bytes:
+			return format_amf3_Value.ABytes(o);
+		default:
+			var h = new haxe_ds_StringMap();
+			var i = 0;
+			var _class = js_Boot.getClass(o);
+			var _g = 0;
+			var _g1 = Type.getInstanceFields(_class);
+			while(_g < _g1.length) {
+				var f = _g1[_g];
+				++_g;
+				var value = format_amf3_Tools.encode(Reflect.getProperty(o,f));
+				h.h[f] = value;
+				++i;
+			}
+			return format_amf3_Value.AObject(h,i,_class.__name__);
+		}
+		break;
+	default:
+		throw haxe_Exception.thrown("Can't encode " + Std.string(o));
+	}
+};
+format_amf3_Tools.decode = function(a) {
+	switch(a._hx_index) {
+	case 0:
+		return format_amf3_Tools.undefined(a);
+	case 1:
+		return format_amf3_Tools.anull(a);
+	case 2:
+		var _g = a.b;
+		return format_amf3_Tools.bool(a);
+	case 3:
+		var _g = a.i;
+		return format_amf3_Tools.int(a);
+	case 4:
+		var _g = a.f;
+		return format_amf3_Tools.number(a);
+	case 5:
+		var _g = a.s;
+		return format_amf3_Tools.string(a);
+	case 6:
+		var _g = a.d;
+		return format_amf3_Tools.date(a);
+	case 7:
+		var _g = a.fields;
+		var _g = a.size;
+		var _g = a.classname;
+		return format_amf3_Tools.object(a);
+	case 8:
+		var _g = a.values;
+		var _g = a.extra;
+		return format_amf3_Tools.array(a);
+	case 9:
+		var _g = a.values;
+		var _g = a.classname;
+		return format_amf3_Tools.vector(a);
+	case 10:
+		var _g = a.x;
+		return format_amf3_Tools.xml(a);
+	case 11:
+		var _g = a.b;
+		return format_amf3_Tools.bytes(a);
+	case 12:
+		var _g = a.m;
+		return format_amf3_Tools.map(a);
+	}
+};
+format_amf3_Tools.undefined = function(a) {
+	return null;
+};
+format_amf3_Tools.anull = function(a) {
+	return null;
+};
+format_amf3_Tools.bool = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 2) {
+		var b = a.b;
+		return b;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.int = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 3) {
+		var n = a.i;
+		return n;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.number = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 4) {
+		var n = a.f;
+		return n;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.string = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 5) {
+		var s = a.s;
+		return s;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.date = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 6) {
+		var d = a.d;
+		return d;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.array = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 8) {
+		var a1 = a.values;
+		var m = a.extra;
+		var b = [];
+		var _g = 0;
+		while(_g < a1.length) {
+			var f = a1[_g];
+			++_g;
+			b.push(format_amf3_Tools.decode(f));
+		}
+		var c = new haxe_ds_StringMap();
+		var h = m.h;
+		var mk_h = h;
+		var mk_keys = Object.keys(h);
+		var mk_length = mk_keys.length;
+		var mk_current = 0;
+		while(mk_current < mk_length) {
+			var mk = mk_keys[mk_current++];
+			var v = format_amf3_Tools.decode(m.h[mk]);
+			c.h[mk] = v;
+		}
+		return new format_amf3_Amf3Array(b,c);
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.vector = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 9) {
+		var _g = a.classname;
+		var a1 = a.values;
+		var v = new Array(a1.length);
+		var _g = 0;
+		var _g1 = a1.length;
+		while(_g < _g1) {
+			var i = _g++;
+			v[i] = format_amf3_Tools.decode(a1[i]);
+		}
+		return v;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.object = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 7) {
+		var _g = a.size;
+		var _g = a.classname;
+		var o = a.fields;
+		var m = new haxe_ds_StringMap();
+		var h = o.h;
+		var f_h = h;
+		var f_keys = Object.keys(h);
+		var f_length = f_keys.length;
+		var f_current = 0;
+		while(f_current < f_length) {
+			var f = f_keys[f_current++];
+			var value = format_amf3_Tools.decode(o.h[f]);
+			m.h[f] = value;
+		}
+		return m;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.xml = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 10) {
+		var x = a.x;
+		return x;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.bytes = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 11) {
+		var b = a.b;
+		return b;
+	} else {
+		return null;
+	}
+};
+format_amf3_Tools.map = function(a) {
+	if(a == null) {
+		return null;
+	}
+	if(a._hx_index == 12) {
+		var m = a.m;
+		var p = new haxe_ds_EnumValueMap();
+		var f = m.keys();
+		while(f.hasNext()) {
+			var f1 = f.next();
+			p.set(format_amf3_Tools.decode(f1),format_amf3_Tools.decode(m.get(f1)));
+		}
+		return p;
+	} else {
+		return null;
+	}
+};
+var format_amf3_Value = $hxEnums["format.amf3.Value"] = { __ename__:"format.amf3.Value",__constructs__:null
+	,AUndefined: {_hx_name:"AUndefined",_hx_index:0,__enum__:"format.amf3.Value",toString:$estr}
+	,ANull: {_hx_name:"ANull",_hx_index:1,__enum__:"format.amf3.Value",toString:$estr}
+	,ABool: ($_=function(b) { return {_hx_index:2,b:b,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="ABool",$_.__params__ = ["b"],$_)
+	,AInt: ($_=function(i) { return {_hx_index:3,i:i,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AInt",$_.__params__ = ["i"],$_)
+	,ANumber: ($_=function(f) { return {_hx_index:4,f:f,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="ANumber",$_.__params__ = ["f"],$_)
+	,AString: ($_=function(s) { return {_hx_index:5,s:s,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AString",$_.__params__ = ["s"],$_)
+	,ADate: ($_=function(d) { return {_hx_index:6,d:d,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="ADate",$_.__params__ = ["d"],$_)
+	,AObject: ($_=function(fields,size,classname) { return {_hx_index:7,fields:fields,size:size,classname:classname,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AObject",$_.__params__ = ["fields","size","classname"],$_)
+	,AArray: ($_=function(values,extra) { return {_hx_index:8,values:values,extra:extra,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AArray",$_.__params__ = ["values","extra"],$_)
+	,AVector: ($_=function(values,classname) { return {_hx_index:9,values:values,classname:classname,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AVector",$_.__params__ = ["values","classname"],$_)
+	,AXml: ($_=function(x) { return {_hx_index:10,x:x,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AXml",$_.__params__ = ["x"],$_)
+	,ABytes: ($_=function(b) { return {_hx_index:11,b:b,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="ABytes",$_.__params__ = ["b"],$_)
+	,AMap: ($_=function(m) { return {_hx_index:12,m:m,__enum__:"format.amf3.Value",toString:$estr}; },$_._hx_name="AMap",$_.__params__ = ["m"],$_)
+};
+format_amf3_Value.__constructs__ = [format_amf3_Value.AUndefined,format_amf3_Value.ANull,format_amf3_Value.ABool,format_amf3_Value.AInt,format_amf3_Value.ANumber,format_amf3_Value.AString,format_amf3_Value.ADate,format_amf3_Value.AObject,format_amf3_Value.AArray,format_amf3_Value.AVector,format_amf3_Value.AXml,format_amf3_Value.ABytes,format_amf3_Value.AMap];
+var format_amf3_Writer = function(o) {
+	this.o = o;
+	o.set_bigEndian(true);
+};
+$hxClasses["format.amf3.Writer"] = format_amf3_Writer;
+format_amf3_Writer.__name__ = "format.amf3.Writer";
+format_amf3_Writer.prototype = {
+	o: null
+	,writeInt: function(i) {
+		if(i > 268435455 || i < -268435456) {
+			this.o.writeByte(5);
+			this.o.writeDouble(i);
+		} else {
+			this.o.writeByte(4);
+			this.writeUInt(i);
+		}
+	}
+	,writeUInt: function(u,shiftLeft) {
+		if(shiftLeft == null) {
+			shiftLeft = false;
+		}
+		if(shiftLeft) {
+			u = u << 1 | 1;
+		}
+		if((u >>> 31 & 1) == 1) {
+			u = u & 536870911;
+		}
+		var bits = 22;
+		var started = false;
+		var chunk = u >>> bits - 1;
+		if(UInt.gt(chunk,0)) {
+			chunk = chunk >>> 1;
+			this.o.writeByte(chunk | 128);
+			u = u - (chunk << bits);
+			++bits;
+			started = true;
+		}
+		bits -= 8;
+		chunk = u >>> bits;
+		if(started || UInt.gt(chunk,0)) {
+			this.o.writeByte(chunk | 128);
+			u = u - (chunk << bits);
+			started = true;
+		}
+		bits -= 7;
+		chunk = u >>> bits;
+		if(started || UInt.gt(chunk,0)) {
+			this.o.writeByte(chunk | 128);
+			u = u - (chunk << bits);
+			started = true;
+		}
+		this.o.writeByte(u);
+	}
+	,writeString: function(s) {
+		var bytes = haxe_io_Bytes.ofString(s,haxe_io_Encoding.UTF8);
+		this.writeUInt(bytes.length,true);
+		this.o.writeBytes(bytes,0,bytes.length);
+	}
+	,writeObject: function(h,size) {
+		if(size == null) {
+			this.o.writeByte(11);
+		} else {
+			this.writeUInt(size << 4 | 3);
+		}
+		this.o.writeByte(1);
+		if(size == null) {
+			var h1 = h.h;
+			var f_h = h1;
+			var f_keys = Object.keys(h1);
+			var f_length = f_keys.length;
+			var f_current = 0;
+			while(f_current < f_length) {
+				var f = f_keys[f_current++];
+				this.writeString(f);
+				this.write(h.h[f]);
+			}
+			this.o.writeByte(1);
+		} else {
+			var k = [];
+			var h1 = h.h;
+			var f_h = h1;
+			var f_keys = Object.keys(h1);
+			var f_length = f_keys.length;
+			var f_current = 0;
+			while(f_current < f_length) {
+				var f = f_keys[f_current++];
+				k.push(f);
+				this.writeString(f);
+			}
+			var _g = 0;
+			var _g1 = k.length;
+			while(_g < _g1) {
+				var i = _g++;
+				this.write(h.h[k[i]]);
+			}
+		}
+	}
+	,write: function(v) {
+		var o = this.o;
+		switch(v._hx_index) {
+		case 0:
+			o.writeByte(0);
+			break;
+		case 1:
+			o.writeByte(1);
+			break;
+		case 2:
+			var b = v.b;
+			o.writeByte(b ? 3 : 2);
+			break;
+		case 3:
+			var i = v.i;
+			this.writeInt(i);
+			break;
+		case 4:
+			var n = v.f;
+			o.writeByte(5);
+			o.writeDouble(n);
+			break;
+		case 5:
+			var s = v.s;
+			o.writeByte(6);
+			this.writeString(s);
+			break;
+		case 6:
+			var d = v.d;
+			o.writeByte(8);
+			o.writeByte(1);
+			o.writeDouble(d.getTime());
+			break;
+		case 7:
+			var _g = v.classname;
+			var h = v.fields;
+			var n = v.size;
+			o.writeByte(10);
+			this.writeObject(h,n);
+			break;
+		case 8:
+			var a = v.values;
+			var extra = v.extra;
+			o.writeByte(9);
+			this.writeUInt(a.length,true);
+			if(extra != null) {
+				var h = extra.h;
+				var mk_h = h;
+				var mk_keys = Object.keys(h);
+				var mk_length = mk_keys.length;
+				var mk_current = 0;
+				while(mk_current < mk_length) {
+					var mk = mk_keys[mk_current++];
+					o.writeString(mk);
+					this.write(extra.h[mk]);
+				}
+			}
+			o.writeByte(1);
+			var _g = 0;
+			while(_g < a.length) {
+				var f = a[_g];
+				++_g;
+				this.write(f);
+			}
+			break;
+		case 10:
+			var x = v.x;
+			o.writeByte(11);
+			this.writeString(haxe_xml_Printer.print(x));
+			break;
+		case 11:
+			var b = v.b;
+			o.writeByte(12);
+			this.writeUInt(b.length,true);
+			o.write(b);
+			break;
+		case 12:
+			var m = v.m;
+			o.writeByte(17);
+			this.writeUInt(Lambda.count(m),true);
+			o.writeByte(0);
+			var f = m.keys();
+			while(f.hasNext()) {
+				var f1 = f.next();
+				this.write(f1);
+				this.write(m.get(f1));
+			}
+			break;
+		default:
+			throw haxe_Exception.thrown("Unsupported type");
+		}
+	}
+	,__class__: format_amf3_Writer
+};
+var format_jpg_Writer = function(out) {
+	this.YTable = [];
+	this.UVTable = [];
+	this.fdtbl_Y = [];
+	this.fdtbl_UV = [];
+	var _g = 0;
+	while(_g < 64) {
+		var i = _g++;
+		this.YTable.push(0);
+		this.UVTable.push(0);
+		this.fdtbl_Y.push(0.0);
+		this.fdtbl_UV.push(0.0);
+	}
+	this.bitcode = new haxe_ds_IntMap();
+	this.category = new haxe_ds_IntMap();
+	this.byteout = out;
+	this.bytenew = 0;
+	this.bytepos = 7;
+	this.YDC_HT = new haxe_ds_IntMap();
+	this.UVDC_HT = new haxe_ds_IntMap();
+	this.YAC_HT = new haxe_ds_IntMap();
+	this.UVAC_HT = new haxe_ds_IntMap();
+	this.YDU = [];
+	this.UDU = [];
+	this.VDU = [];
+	this.DU = [];
+	var _g = 0;
+	while(_g < 64) {
+		var i = _g++;
+		this.YDU.push(0.0);
+		this.UDU.push(0.0);
+		this.VDU.push(0.0);
+		this.DU.push(0.0);
+	}
+	this.initZigZag();
+	this.initLuminance();
+	this.initChrominance();
+	this.initHuffmanTbl();
+	this.initCategoryNumber();
+};
+$hxClasses["format.jpg.Writer"] = format_jpg_Writer;
+format_jpg_Writer.__name__ = "format.jpg.Writer";
+format_jpg_Writer.prototype = {
+	ZigZag: null
+	,initZigZag: function() {
+		this.ZigZag = [0,1,5,6,14,15,27,28,2,4,7,13,16,26,29,42,3,8,12,17,25,30,41,43,9,11,18,24,31,40,44,53,10,19,23,32,39,45,52,54,20,22,33,38,46,51,55,60,21,34,37,47,50,56,59,61,35,36,48,49,57,58,62,63];
+	}
+	,YTable: null
+	,UVTable: null
+	,fdtbl_Y: null
+	,fdtbl_UV: null
+	,initQuantTables: function(sf) {
+		var YQT = [16,11,10,16,24,40,51,61,12,12,14,19,26,58,60,55,14,13,16,24,40,57,69,56,14,17,22,29,51,87,80,62,18,22,37,56,68,109,103,77,24,35,55,64,81,104,113,92,49,64,78,87,103,121,120,101,72,92,95,98,112,100,103,99];
+		var _g = 0;
+		while(_g < 64) {
+			var i = _g++;
+			var t = Math.floor((YQT[i] * sf + 50) / 100);
+			if(t < 1) {
+				t = 1;
+			} else if(t > 255) {
+				t = 255;
+			}
+			this.YTable[this.ZigZag[i]] = t;
+		}
+		var UVQT = [17,18,24,47,99,99,99,99,18,21,26,66,99,99,99,99,24,26,56,99,99,99,99,99,47,66,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99];
+		var _g = 0;
+		while(_g < 64) {
+			var j = _g++;
+			var u = Math.floor((UVQT[j] * sf + 50) / 100);
+			if(u < 1) {
+				u = 1;
+			} else if(u > 255) {
+				u = 255;
+			}
+			this.UVTable[this.ZigZag[j]] = u;
+		}
+		var aasf = [1.0,1.387039845,1.306562965,1.175875602,1.0,0.785694958,0.541196100,0.275899379];
+		var k = 0;
+		var _g = 0;
+		while(_g < 8) {
+			var row = _g++;
+			var _g1 = 0;
+			while(_g1 < 8) {
+				var col = _g1++;
+				this.fdtbl_Y[k] = 1.0 / (this.YTable[this.ZigZag[k]] * aasf[row] * aasf[col] * 8.0);
+				this.fdtbl_UV[k] = 1.0 / (this.UVTable[this.ZigZag[k]] * aasf[row] * aasf[col] * 8.0);
+				++k;
+			}
+		}
+	}
+	,std_dc_luminance_nrcodes: null
+	,std_dc_luminance_values: null
+	,std_ac_luminance_nrcodes: null
+	,std_ac_luminance_values: null
+	,initLuminance: function() {
+		this.std_dc_luminance_nrcodes = [0,0,1,5,1,1,1,1,1,1,0,0,0,0,0,0,0];
+		this.std_dc_luminance_values = this.strIntsToBytes("0,1,2,3,4,5,6,7,8,9,10,11");
+		this.std_ac_luminance_nrcodes = [0,0,2,1,3,3,2,4,3,5,5,4,4,0,0,1,125];
+		this.std_ac_luminance_values = this.strIntsToBytes("0x01,0x02,0x03,0x00,0x04,0x11,0x05,0x12," + "0x21,0x31,0x41,0x06,0x13,0x51,0x61,0x07," + "0x22,0x71,0x14,0x32,0x81,0x91,0xa1,0x08," + "0x23,0x42,0xb1,0xc1,0x15,0x52,0xd1,0xf0," + "0x24,0x33,0x62,0x72,0x82,0x09,0x0a,0x16," + "0x17,0x18,0x19,0x1a,0x25,0x26,0x27,0x28," + "0x29,0x2a,0x34,0x35,0x36,0x37,0x38,0x39," + "0x3a,0x43,0x44,0x45,0x46,0x47,0x48,0x49," + "0x4a,0x53,0x54,0x55,0x56,0x57,0x58,0x59," + "0x5a,0x63,0x64,0x65,0x66,0x67,0x68,0x69," + "0x6a,0x73,0x74,0x75,0x76,0x77,0x78,0x79," + "0x7a,0x83,0x84,0x85,0x86,0x87,0x88,0x89," + "0x8a,0x92,0x93,0x94,0x95,0x96,0x97,0x98," + "0x99,0x9a,0xa2,0xa3,0xa4,0xa5,0xa6,0xa7," + "0xa8,0xa9,0xaa,0xb2,0xb3,0xb4,0xb5,0xb6," + "0xb7,0xb8,0xb9,0xba,0xc2,0xc3,0xc4,0xc5," + "0xc6,0xc7,0xc8,0xc9,0xca,0xd2,0xd3,0xd4," + "0xd5,0xd6,0xd7,0xd8,0xd9,0xda,0xe1,0xe2," + "0xe3,0xe4,0xe5,0xe6,0xe7,0xe8,0xe9,0xea," + "0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8," + "0xf9,0xfa");
+	}
+	,strIntsToBytes: function(s) {
+		var len = s.length;
+		var b = new haxe_io_BytesBuffer();
+		var val = 0;
+		var i = 0;
+		var _g = 0;
+		var _g1 = len;
+		while(_g < _g1) {
+			var j = _g++;
+			if(s.charAt(j) == ",") {
+				val = Std.parseInt(HxOverrides.substr(s,i,j - i));
+				b.addByte(val);
+				i = j + 1;
+			}
+		}
+		if(i < len) {
+			val = Std.parseInt(HxOverrides.substr(s,i,null));
+			b.addByte(val);
+		}
+		return b.getBytes();
+	}
+	,std_dc_chrominance_nrcodes: null
+	,std_dc_chrominance_values: null
+	,std_ac_chrominance_nrcodes: null
+	,std_ac_chrominance_values: null
+	,initChrominance: function() {
+		this.std_dc_chrominance_nrcodes = [0,0,3,1,1,1,1,1,1,1,1,1,0,0,0,0,0];
+		this.std_dc_chrominance_values = this.strIntsToBytes("0,1,2,3,4,5,6,7,8,9,10,11");
+		this.std_ac_chrominance_nrcodes = [0,0,2,1,2,4,4,3,4,7,5,4,4,0,1,2,119];
+		this.std_ac_chrominance_values = this.strIntsToBytes("0x00,0x01,0x02,0x03,0x11,0x04,0x05,0x21," + "0x31,0x06,0x12,0x41,0x51,0x07,0x61,0x71," + "0x13,0x22,0x32,0x81,0x08,0x14,0x42,0x91," + "0xa1,0xb1,0xc1,0x09,0x23,0x33,0x52,0xf0," + "0x15,0x62,0x72,0xd1,0x0a,0x16,0x24,0x34," + "0xe1,0x25,0xf1,0x17,0x18,0x19,0x1a,0x26," + "0x27,0x28,0x29,0x2a,0x35,0x36,0x37,0x38," + "0x39,0x3a,0x43,0x44,0x45,0x46,0x47,0x48," + "0x49,0x4a,0x53,0x54,0x55,0x56,0x57,0x58," + "0x59,0x5a,0x63,0x64,0x65,0x66,0x67,0x68," + "0x69,0x6a,0x73,0x74,0x75,0x76,0x77,0x78," + "0x79,0x7a,0x82,0x83,0x84,0x85,0x86,0x87," + "0x88,0x89,0x8a,0x92,0x93,0x94,0x95,0x96," + "0x97,0x98,0x99,0x9a,0xa2,0xa3,0xa4,0xa5," + "0xa6,0xa7,0xa8,0xa9,0xaa,0xb2,0xb3,0xb4," + "0xb5,0xb6,0xb7,0xb8,0xb9,0xba,0xc2,0xc3," + "0xc4,0xc5,0xc6,0xc7,0xc8,0xc9,0xca,0xd2," + "0xd3,0xd4,0xd5,0xd6,0xd7,0xd8,0xd9,0xda," + "0xe2,0xe3,0xe4,0xe5,0xe6,0xe7,0xe8,0xe9," + "0xea,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8," + "0xf9,0xfa");
+	}
+	,YDC_HT: null
+	,UVDC_HT: null
+	,YAC_HT: null
+	,UVAC_HT: null
+	,initHuffmanTbl: function() {
+		this.YDC_HT = this.computeHuffmanTbl(this.std_dc_luminance_nrcodes,this.std_dc_luminance_values);
+		this.UVDC_HT = this.computeHuffmanTbl(this.std_dc_chrominance_nrcodes,this.std_dc_chrominance_values);
+		this.YAC_HT = this.computeHuffmanTbl(this.std_ac_luminance_nrcodes,this.std_ac_luminance_values);
+		this.UVAC_HT = this.computeHuffmanTbl(this.std_ac_chrominance_nrcodes,this.std_ac_chrominance_values);
+	}
+	,computeHuffmanTbl: function(nrcodes,std_table) {
+		var codevalue = 0;
+		var pos_in_table = 0;
+		var HT = new haxe_ds_IntMap();
+		var _g = 1;
+		while(_g < 17) {
+			var k = _g++;
+			var end = nrcodes[k];
+			var _g1 = 0;
+			var _g2 = end;
+			while(_g1 < _g2) {
+				var j = _g1++;
+				var idx = std_table.b[pos_in_table];
+				var value = new format_jpg__$Writer_BitString(k,codevalue);
+				HT.h[idx] = value;
+				++pos_in_table;
+				++codevalue;
+			}
+			codevalue *= 2;
+		}
+		return HT;
+	}
+	,bitcode: null
+	,category: null
+	,initCategoryNumber: function() {
+		var nrlower = 1;
+		var nrupper = 2;
+		var idx;
+		var _g = 1;
+		while(_g < 16) {
+			var cat = _g++;
+			var _g1 = nrlower;
+			var _g2 = nrupper;
+			while(_g1 < _g2) {
+				var nr = _g1++;
+				idx = 32767 + nr;
+				this.category.h[idx] = cat;
+				var this1 = this.bitcode;
+				var value = new format_jpg__$Writer_BitString(cat,nr);
+				this1.h[idx] = value;
+			}
+			var nrneg = -(nrupper - 1);
+			while(nrneg <= -nrlower) {
+				idx = 32767 + nrneg;
+				this.category.h[idx] = cat;
+				var this2 = this.bitcode;
+				var value1 = new format_jpg__$Writer_BitString(cat,nrupper - 1 + nrneg);
+				this2.h[idx] = value1;
+				++nrneg;
+			}
+			nrlower <<= 1;
+			nrupper <<= 1;
+		}
+	}
+	,byteout: null
+	,bytenew: null
+	,bytepos: null
+	,writeBits: function(bs) {
+		var value = bs.val;
+		var posval = bs.len - 1;
+		while(posval >= 0) {
+			if((value & 1 << posval) != 0) {
+				this.bytenew |= 1 << this.bytepos;
+			}
+			--posval;
+			this.bytepos--;
+			if(this.bytepos < 0) {
+				if(this.bytenew == 255) {
+					this.byteout.writeByte(255);
+					this.byteout.writeByte(0);
+				} else {
+					this.byteout.writeByte(this.bytenew);
+				}
+				this.bytepos = 7;
+				this.bytenew = 0;
+			}
+		}
+	}
+	,writeWord: function(val) {
+		this.byteout.writeByte(val >> 8 & 255);
+		this.byteout.writeByte(val & 255);
+	}
+	,fDCTQuant: function(data,fdtbl) {
+		var dataOff = 0;
+		var _g = 0;
+		while(_g < 8) {
+			var i = _g++;
+			var tmp0 = data[dataOff] + data[dataOff + 7];
+			var tmp7 = data[dataOff] - data[dataOff + 7];
+			var tmp1 = data[dataOff + 1] + data[dataOff + 6];
+			var tmp6 = data[dataOff + 1] - data[dataOff + 6];
+			var tmp2 = data[dataOff + 2] + data[dataOff + 5];
+			var tmp5 = data[dataOff + 2] - data[dataOff + 5];
+			var tmp3 = data[dataOff + 3] + data[dataOff + 4];
+			var tmp4 = data[dataOff + 3] - data[dataOff + 4];
+			var tmp10 = tmp0 + tmp3;
+			var tmp13 = tmp0 - tmp3;
+			var tmp11 = tmp1 + tmp2;
+			var tmp12 = tmp1 - tmp2;
+			data[dataOff] = tmp10 + tmp11;
+			data[dataOff + 4] = tmp10 - tmp11;
+			var z1 = (tmp12 + tmp13) * 0.707106781;
+			data[dataOff + 2] = tmp13 + z1;
+			data[dataOff + 6] = tmp13 - z1;
+			tmp10 = tmp4 + tmp5;
+			tmp11 = tmp5 + tmp6;
+			tmp12 = tmp6 + tmp7;
+			var z5 = (tmp10 - tmp12) * 0.382683433;
+			var z2 = 0.541196100 * tmp10 + z5;
+			var z4 = 1.306562965 * tmp12 + z5;
+			var z3 = tmp11 * 0.707106781;
+			var z11 = tmp7 + z3;
+			var z13 = tmp7 - z3;
+			data[dataOff + 5] = z13 + z2;
+			data[dataOff + 3] = z13 - z2;
+			data[dataOff + 1] = z11 + z4;
+			data[dataOff + 7] = z11 - z4;
+			dataOff += 8;
+		}
+		dataOff = 0;
+		var _g = 0;
+		while(_g < 8) {
+			var j = _g++;
+			var tmp0p2 = data[dataOff] + data[dataOff + 56];
+			var tmp7p2 = data[dataOff] - data[dataOff + 56];
+			var tmp1p2 = data[dataOff + 8] + data[dataOff + 48];
+			var tmp6p2 = data[dataOff + 8] - data[dataOff + 48];
+			var tmp2p2 = data[dataOff + 16] + data[dataOff + 40];
+			var tmp5p2 = data[dataOff + 16] - data[dataOff + 40];
+			var tmp3p2 = data[dataOff + 24] + data[dataOff + 32];
+			var tmp4p2 = data[dataOff + 24] - data[dataOff + 32];
+			var tmp10p2 = tmp0p2 + tmp3p2;
+			var tmp13p2 = tmp0p2 - tmp3p2;
+			var tmp11p2 = tmp1p2 + tmp2p2;
+			var tmp12p2 = tmp1p2 - tmp2p2;
+			data[dataOff] = tmp10p2 + tmp11p2;
+			data[dataOff + 32] = tmp10p2 - tmp11p2;
+			var z1p2 = (tmp12p2 + tmp13p2) * 0.707106781;
+			data[dataOff + 16] = tmp13p2 + z1p2;
+			data[dataOff + 48] = tmp13p2 - z1p2;
+			tmp10p2 = tmp4p2 + tmp5p2;
+			tmp11p2 = tmp5p2 + tmp6p2;
+			tmp12p2 = tmp6p2 + tmp7p2;
+			var z5p2 = (tmp10p2 - tmp12p2) * 0.382683433;
+			var z2p2 = 0.541196100 * tmp10p2 + z5p2;
+			var z4p2 = 1.306562965 * tmp12p2 + z5p2;
+			var z3p2 = tmp11p2 * 0.707106781;
+			var z11p2 = tmp7p2 + z3p2;
+			var z13p2 = tmp7p2 - z3p2;
+			data[dataOff + 40] = z13p2 + z2p2;
+			data[dataOff + 24] = z13p2 - z2p2;
+			data[dataOff + 8] = z11p2 + z4p2;
+			data[dataOff + 56] = z11p2 - z4p2;
+			++dataOff;
+		}
+		var _g = 0;
+		while(_g < 64) {
+			var k = _g++;
+			data[k] = Math.round(data[k] * fdtbl[k]);
+		}
+		return data;
+	}
+	,b: function(v) {
+		this.byteout.writeByte(v);
+	}
+	,writeAPP0: function() {
+		this.byteout.writeByte(255);
+		this.byteout.writeByte(224);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(16);
+		this.byteout.writeByte(74);
+		this.byteout.writeByte(70);
+		this.byteout.writeByte(73);
+		this.byteout.writeByte(70);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(0);
+	}
+	,writeDQT: function() {
+		this.byteout.writeByte(255);
+		this.byteout.writeByte(219);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(132);
+		this.byteout.writeByte(0);
+		var _g = 0;
+		while(_g < 64) {
+			var j = _g++;
+			this.byteout.writeByte(this.YTable[j]);
+		}
+		this.byteout.writeByte(1);
+		var _g = 0;
+		while(_g < 64) {
+			var j = _g++;
+			this.byteout.writeByte(this.UVTable[j]);
+		}
+	}
+	,writeSOF0: function(width,height) {
+		this.byteout.writeByte(255);
+		this.byteout.writeByte(192);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(8);
+		this.byteout.writeByte(height >> 8 & 255);
+		this.byteout.writeByte(height & 255);
+		this.byteout.writeByte(width >> 8 & 255);
+		this.byteout.writeByte(width & 255);
+		this.byteout.writeByte(3);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(2);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(3);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(1);
+	}
+	,writeDHT: function() {
+		this.byteout.writeByte(255);
+		this.byteout.writeByte(196);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(162);
+		this.byteout.writeByte(0);
+		var _g = 1;
+		while(_g < 17) {
+			var j = _g++;
+			this.byteout.writeByte(this.std_dc_luminance_nrcodes[j]);
+		}
+		this.byteout.write(this.std_dc_luminance_values);
+		this.byteout.writeByte(16);
+		var _g = 1;
+		while(_g < 17) {
+			var j = _g++;
+			this.byteout.writeByte(this.std_ac_luminance_nrcodes[j]);
+		}
+		this.byteout.write(this.std_ac_luminance_values);
+		this.byteout.writeByte(1);
+		var _g = 1;
+		while(_g < 17) {
+			var j = _g++;
+			this.byteout.writeByte(this.std_dc_chrominance_nrcodes[j]);
+		}
+		this.byteout.write(this.std_dc_chrominance_values);
+		this.byteout.writeByte(17);
+		var _g = 1;
+		while(_g < 17) {
+			var j = _g++;
+			this.byteout.writeByte(this.std_ac_chrominance_nrcodes[j]);
+		}
+		this.byteout.write(this.std_ac_chrominance_values);
+	}
+	,writeSOS: function() {
+		this.byteout.writeByte(255);
+		this.byteout.writeByte(218);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(12);
+		this.byteout.writeByte(3);
+		this.byteout.writeByte(1);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(2);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(3);
+		this.byteout.writeByte(17);
+		this.byteout.writeByte(0);
+		this.byteout.writeByte(63);
+		this.byteout.writeByte(0);
+	}
+	,DU: null
+	,processDU: function(CDU,fdtbl,DC,HTDC,HTAC) {
+		var EOB = HTAC.h[0];
+		var M16zeroes = HTAC.h[240];
+		var DU_DCT = this.fDCTQuant(CDU,fdtbl);
+		var _g = 0;
+		while(_g < 64) {
+			var i = _g++;
+			this.DU[this.ZigZag[i]] = DU_DCT[i];
+		}
+		var idx;
+		var Diff = this.DU[0] - DC | 0;
+		DC = this.DU[0];
+		if(Diff == 0) {
+			this.writeBits(HTDC.h[0]);
+		} else {
+			idx = 32767 + Diff;
+			this.writeBits(HTDC.h[this.category.h[idx]]);
+			this.writeBits(this.bitcode.h[idx]);
+		}
+		var end0pos = 63;
+		while(end0pos > 0 && this.DU[end0pos] == 0.0) --end0pos;
+		if(end0pos == 0) {
+			this.writeBits(EOB);
+			return DC;
+		}
+		var i = 1;
+		while(i <= end0pos) {
+			var startpos = i;
+			while(this.DU[i] == 0.0 && i <= end0pos) ++i;
+			var nrzeroes = i - startpos;
+			if(nrzeroes >= 16) {
+				var _g = 0;
+				var _g1 = nrzeroes >> 4;
+				while(_g < _g1) {
+					var nrmarker = _g++;
+					this.writeBits(M16zeroes);
+				}
+				nrzeroes &= 15;
+			}
+			idx = 32767 + (this.DU[i] | 0);
+			this.writeBits(HTAC.h[nrzeroes * 16 + this.category.h[idx]]);
+			this.writeBits(this.bitcode.h[idx]);
+			++i;
+		}
+		if(end0pos != 63) {
+			this.writeBits(EOB);
+		}
+		return DC;
+	}
+	,YDU: null
+	,UDU: null
+	,VDU: null
+	,RGB2YUV: function(img,width,xpos,ypos) {
+		var pos = 0;
+		var _g = 0;
+		while(_g < 8) {
+			var y = _g++;
+			var offset = (y + ypos) * width + xpos << 2;
+			var _g1 = 0;
+			while(_g1 < 8) {
+				var x = _g1++;
+				++offset;
+				var R = img.b[offset++];
+				var G = img.b[offset++];
+				var B = img.b[offset++];
+				this.YDU[pos] = 0.29900 * R + 0.58700 * G + 0.11400 * B - 128;
+				this.UDU[pos] = -0.16874 * R + -0.33126 * G + 0.50000 * B;
+				this.VDU[pos] = 0.50000 * R + -0.41869 * G + -0.08131 * B;
+				++pos;
+			}
+		}
+	}
+	,write: function(image) {
+		var quality = image.quality;
+		if(quality <= 0) {
+			quality = 1;
+		}
+		if(quality > 100) {
+			quality = 100;
+		}
+		var sf = quality < 50 ? 5000 / quality | 0 : 200 - quality * 2 | 0;
+		this.initQuantTables(sf);
+		this.bytenew = 0;
+		this.bytepos = 7;
+		var width = image.width;
+		var height = image.height;
+		this.writeWord(65496);
+		this.writeAPP0();
+		this.writeDQT();
+		this.writeSOF0(width,height);
+		this.writeDHT();
+		this.writeSOS();
+		var DCY = 0.0;
+		var DCU = 0.0;
+		var DCV = 0.0;
+		this.bytenew = 0;
+		this.bytepos = 7;
+		var ypos = 0;
+		while(ypos < height) {
+			var xpos = 0;
+			while(xpos < width) {
+				this.RGB2YUV(image.pixels,width,xpos,ypos);
+				DCY = this.processDU(this.YDU,this.fdtbl_Y,DCY,this.YDC_HT,this.YAC_HT);
+				DCU = this.processDU(this.UDU,this.fdtbl_UV,DCU,this.UVDC_HT,this.UVAC_HT);
+				DCV = this.processDU(this.VDU,this.fdtbl_UV,DCV,this.UVDC_HT,this.UVAC_HT);
+				xpos += 8;
+			}
+			ypos += 8;
+		}
+		if(this.bytepos >= 0) {
+			var fillbits = new format_jpg__$Writer_BitString(this.bytepos + 1,(1 << this.bytepos + 1) - 1);
+			this.writeBits(fillbits);
+		}
+		this.writeWord(65497);
+	}
+	,__class__: format_jpg_Writer
+};
+var format_jpg__$Writer_BitString = function(l,v) {
+	this.len = l;
+	this.val = v;
+};
+$hxClasses["format.jpg._Writer.BitString"] = format_jpg__$Writer_BitString;
+format_jpg__$Writer_BitString.__name__ = "format.jpg._Writer.BitString";
+format_jpg__$Writer_BitString.prototype = {
+	len: null
+	,val: null
+	,__class__: format_jpg__$Writer_BitString
+};
+var format_png_Color = $hxEnums["format.png.Color"] = { __ename__:"format.png.Color",__constructs__:null
+	,ColGrey: ($_=function(alpha) { return {_hx_index:0,alpha:alpha,__enum__:"format.png.Color",toString:$estr}; },$_._hx_name="ColGrey",$_.__params__ = ["alpha"],$_)
+	,ColTrue: ($_=function(alpha) { return {_hx_index:1,alpha:alpha,__enum__:"format.png.Color",toString:$estr}; },$_._hx_name="ColTrue",$_.__params__ = ["alpha"],$_)
+	,ColIndexed: {_hx_name:"ColIndexed",_hx_index:2,__enum__:"format.png.Color",toString:$estr}
+};
+format_png_Color.__constructs__ = [format_png_Color.ColGrey,format_png_Color.ColTrue,format_png_Color.ColIndexed];
+var format_png_Chunk = $hxEnums["format.png.Chunk"] = { __ename__:"format.png.Chunk",__constructs__:null
+	,CEnd: {_hx_name:"CEnd",_hx_index:0,__enum__:"format.png.Chunk",toString:$estr}
+	,CHeader: ($_=function(h) { return {_hx_index:1,h:h,__enum__:"format.png.Chunk",toString:$estr}; },$_._hx_name="CHeader",$_.__params__ = ["h"],$_)
+	,CData: ($_=function(b) { return {_hx_index:2,b:b,__enum__:"format.png.Chunk",toString:$estr}; },$_._hx_name="CData",$_.__params__ = ["b"],$_)
+	,CPalette: ($_=function(b) { return {_hx_index:3,b:b,__enum__:"format.png.Chunk",toString:$estr}; },$_._hx_name="CPalette",$_.__params__ = ["b"],$_)
+	,CUnknown: ($_=function(id,data) { return {_hx_index:4,id:id,data:data,__enum__:"format.png.Chunk",toString:$estr}; },$_._hx_name="CUnknown",$_.__params__ = ["id","data"],$_)
+};
+format_png_Chunk.__constructs__ = [format_png_Chunk.CEnd,format_png_Chunk.CHeader,format_png_Chunk.CData,format_png_Chunk.CPalette,format_png_Chunk.CUnknown];
+var format_png_Reader = function(i) {
+	this.i = i;
+	i.set_bigEndian(true);
+	this.checkCRC = true;
+};
+$hxClasses["format.png.Reader"] = format_png_Reader;
+format_png_Reader.__name__ = "format.png.Reader";
+format_png_Reader.prototype = {
+	i: null
+	,checkCRC: null
+	,read: function() {
+		var _g = 0;
+		var _g1 = [137,80,78,71,13,10,26,10];
+		while(_g < _g1.length) {
+			var b = _g1[_g];
+			++_g;
+			if(this.i.readByte() != b) {
+				throw haxe_Exception.thrown("Invalid header");
+			}
+		}
+		var l = new haxe_ds_List();
+		while(true) {
+			var c = this.readChunk();
+			l.add(c);
+			if(c == format_png_Chunk.CEnd) {
+				break;
+			}
+		}
+		return l;
+	}
+	,readHeader: function(i) {
+		i.set_bigEndian(true);
+		var width = i.readInt32();
+		var height = i.readInt32();
+		var colbits = i.readByte();
+		var color = i.readByte();
+		var color1;
+		switch(color) {
+		case 0:
+			color1 = format_png_Color.ColGrey(false);
+			break;
+		case 2:
+			color1 = format_png_Color.ColTrue(false);
+			break;
+		case 3:
+			color1 = format_png_Color.ColIndexed;
+			break;
+		case 4:
+			color1 = format_png_Color.ColGrey(true);
+			break;
+		case 6:
+			color1 = format_png_Color.ColTrue(true);
+			break;
+		default:
+			throw haxe_Exception.thrown("Unknown color model " + color + ":" + colbits);
+		}
+		var compress = i.readByte();
+		var filter = i.readByte();
+		if(compress != 0 || filter != 0) {
+			throw haxe_Exception.thrown("Invalid header");
+		}
+		var interlace = i.readByte();
+		if(interlace != 0 && interlace != 1) {
+			throw haxe_Exception.thrown("Invalid header");
+		}
+		return { width : width, height : height, colbits : colbits, color : color1, interlaced : interlace == 1};
+	}
+	,readChunk: function() {
+		var dataLen = this.i.readInt32();
+		var id = this.i.readString(4);
+		var data = this.i.read(dataLen);
+		var crc = this.i.readInt32();
+		if(this.checkCRC) {
+			var c_crc = -1;
+			var _g = 0;
+			while(_g < 4) {
+				var i = _g++;
+				var tmp = (c_crc ^ HxOverrides.cca(id,i)) & 255;
+				var _g1 = 0;
+				while(_g1 < 8) {
+					var j = _g1++;
+					tmp = tmp >>> 1 ^ -(tmp & 1) & -306674912;
+				}
+				c_crc = c_crc >>> 8 ^ tmp;
+			}
+			var b = data.b.bufferValue;
+			var _g = 0;
+			var _g1 = data.length;
+			while(_g < _g1) {
+				var i = _g++;
+				var tmp = (c_crc ^ b.bytes[i]) & 255;
+				var _g2 = 0;
+				while(_g2 < 8) {
+					var j = _g2++;
+					tmp = tmp >>> 1 ^ -(tmp & 1) & -306674912;
+				}
+				c_crc = c_crc >>> 8 ^ tmp;
+			}
+			if((c_crc ^ -1) != crc) {
+				throw haxe_Exception.thrown("CRC check failure");
+			}
+		}
+		switch(id) {
+		case "IDAT":
+			return format_png_Chunk.CData(data);
+		case "IEND":
+			return format_png_Chunk.CEnd;
+		case "IHDR":
+			return format_png_Chunk.CHeader(this.readHeader(new haxe_io_BytesInput(data)));
+		case "PLTE":
+			return format_png_Chunk.CPalette(data);
+		default:
+			return format_png_Chunk.CUnknown(id,data);
+		}
+	}
+	,__class__: format_png_Reader
+};
+var format_png_Tools = function() { };
+$hxClasses["format.png.Tools"] = format_png_Tools;
+format_png_Tools.__name__ = "format.png.Tools";
+format_png_Tools.getHeader = function(d) {
+	var _g_head = d.h;
+	while(_g_head != null) {
+		var val = _g_head.item;
+		_g_head = _g_head.next;
+		var c = val;
+		if(c._hx_index == 1) {
+			var h = c.h;
+			return h;
+		}
+	}
+	throw haxe_Exception.thrown("Header not found");
+};
+format_png_Tools.getPalette = function(d) {
+	var _g_head = d.h;
+	while(_g_head != null) {
+		var val = _g_head.item;
+		_g_head = _g_head.next;
+		var c = val;
+		if(c._hx_index == 3) {
+			var b = c.b;
+			return b;
+		}
+	}
+	return null;
+};
+format_png_Tools.filter = function(data,x,y,stride,prev,p,numChannels) {
+	if(numChannels == null) {
+		numChannels = 4;
+	}
+	var b = y == 0 ? 0 : data.b[p - stride];
+	var c = x == 0 || y == 0 ? 0 : data.b[p - stride - numChannels];
+	var k = prev + b - c;
+	var pa = k - prev;
+	if(pa < 0) {
+		pa = -pa;
+	}
+	var pb = k - b;
+	if(pb < 0) {
+		pb = -pb;
+	}
+	var pc = k - c;
+	if(pc < 0) {
+		pc = -pc;
+	}
+	if(pa <= pb && pa <= pc) {
+		return prev;
+	} else if(pb <= pc) {
+		return b;
+	} else {
+		return c;
+	}
+};
+format_png_Tools.reverseBytes = function(b) {
+	var p = 0;
+	var _g = 0;
+	var _g1 = b.length >> 2;
+	while(_g < _g1) {
+		var i = _g++;
+		var b1 = b.b[p];
+		var g = b.b[p + 1];
+		var r = b.b[p + 2];
+		var a = b.b[p + 3];
+		b.b[p++] = a & 255;
+		b.b[p++] = r & 255;
+		b.b[p++] = g & 255;
+		b.b[p++] = b1 & 255;
+	}
+};
+format_png_Tools.extractGrey = function(d) {
+	var h = format_png_Tools.getHeader(d);
+	var grey = new haxe_io_Bytes(new ArrayBuffer(h.width * h.height));
+	var data = null;
+	var fullData = null;
+	var _g_head = d.h;
+	while(_g_head != null) {
+		var val = _g_head.item;
+		_g_head = _g_head.next;
+		var c = val;
+		if(c._hx_index == 2) {
+			var b = c.b;
+			if(fullData != null) {
+				fullData.add(b);
+			} else if(data == null) {
+				data = b;
+			} else {
+				fullData = new haxe_io_BytesBuffer();
+				fullData.add(data);
+				fullData.add(b);
+				data = null;
+			}
+		}
+	}
+	if(fullData != null) {
+		data = fullData.getBytes();
+	}
+	if(data == null) {
+		throw haxe_Exception.thrown("Data not found");
+	}
+	data = format_tools_Inflate.run(data);
+	var r = 0;
+	var w = 0;
+	var _g = h.color;
+	if(_g._hx_index == 0) {
+		var alpha = _g.alpha;
+		if(h.colbits != 8) {
+			throw haxe_Exception.thrown("Unsupported color mode");
+		}
+		var width = h.width;
+		var stride = (alpha ? 2 : 1) * width + 1;
+		if(data.length < h.height * stride) {
+			throw haxe_Exception.thrown("Not enough data");
+		}
+		var rinc = alpha ? 2 : 1;
+		var _g = 0;
+		var _g1 = h.height;
+		while(_g < _g1) {
+			var y = _g++;
+			var f = data.b[r++];
+			switch(f) {
+			case 0:
+				var _g2 = 0;
+				var _g3 = width;
+				while(_g2 < _g3) {
+					var x = _g2++;
+					var v = data.b[r];
+					r += rinc;
+					grey.b[w++] = v & 255;
+				}
+				break;
+			case 1:
+				var cv = 0;
+				var _g4 = 0;
+				var _g5 = width;
+				while(_g4 < _g5) {
+					var x1 = _g4++;
+					cv += data.b[r];
+					r += rinc;
+					grey.b[w++] = cv & 255;
+				}
+				break;
+			case 2:
+				var stride = y == 0 ? 0 : width;
+				var _g6 = 0;
+				var _g7 = width;
+				while(_g6 < _g7) {
+					var x2 = _g6++;
+					var v1 = data.b[r] + grey.b[w - stride];
+					r += rinc;
+					grey.b[w++] = v1 & 255;
+				}
+				break;
+			case 3:
+				var cv1 = 0;
+				var stride1 = y == 0 ? 0 : width;
+				var _g8 = 0;
+				var _g9 = width;
+				while(_g8 < _g9) {
+					var x3 = _g8++;
+					cv1 = data.b[r] + (cv1 + grey.b[w - stride1] >> 1) & 255;
+					r += rinc;
+					grey.b[w++] = cv1 & 255;
+				}
+				break;
+			case 4:
+				var stride2 = width;
+				var cv2 = 0;
+				var _g10 = 0;
+				var _g11 = width;
+				while(_g10 < _g11) {
+					var x4 = _g10++;
+					var numChannels = 1;
+					if(numChannels == null) {
+						numChannels = 4;
+					}
+					var b = y == 0 ? 0 : grey.b[w - stride2];
+					var c = x4 == 0 || y == 0 ? 0 : grey.b[w - stride2 - numChannels];
+					var k = cv2 + b - c;
+					var pa = k - cv2;
+					if(pa < 0) {
+						pa = -pa;
+					}
+					var pb = k - b;
+					if(pb < 0) {
+						pb = -pb;
+					}
+					var pc = k - c;
+					if(pc < 0) {
+						pc = -pc;
+					}
+					cv2 = (pa <= pb && pa <= pc ? cv2 : pb <= pc ? b : c) + data.b[r] & 255;
+					r += rinc;
+					grey.b[w++] = cv2 & 255;
+				}
+				break;
+			default:
+				throw haxe_Exception.thrown("Invalid filter " + f);
+			}
+		}
+	} else {
+		throw haxe_Exception.thrown("Unsupported color mode");
+	}
+	return grey;
+};
+format_png_Tools.extract32 = function(d,bytes,flipY) {
+	var h = format_png_Tools.getHeader(d);
+	var bgra = bytes == null ? new haxe_io_Bytes(new ArrayBuffer(h.width * h.height * 4)) : bytes;
+	var data = null;
+	var fullData = null;
+	var _g_head = d.h;
+	while(_g_head != null) {
+		var val = _g_head.item;
+		_g_head = _g_head.next;
+		var c = val;
+		if(c._hx_index == 2) {
+			var b = c.b;
+			if(fullData != null) {
+				fullData.add(b);
+			} else if(data == null) {
+				data = b;
+			} else {
+				fullData = new haxe_io_BytesBuffer();
+				fullData.add(data);
+				fullData.add(b);
+				data = null;
+			}
+		}
+	}
+	if(fullData != null) {
+		data = fullData.getBytes();
+	}
+	if(data == null) {
+		throw haxe_Exception.thrown("Data not found");
+	}
+	data = format_tools_Inflate.run(data);
+	var r = 0;
+	var w = 0;
+	var lineDelta = 0;
+	if(flipY) {
+		lineDelta = -h.width * 8;
+		w = (h.height - 1) * (h.width * 4);
+	}
+	var flipY1 = flipY ? -1 : 1;
+	var _g = h.color;
+	switch(_g._hx_index) {
+	case 0:
+		var alpha = _g.alpha;
+		if(h.colbits != 8) {
+			throw haxe_Exception.thrown("Unsupported color mode");
+		}
+		var width = h.width;
+		var stride = (alpha ? 2 : 1) * width + 1;
+		if(data.length < h.height * stride) {
+			throw haxe_Exception.thrown("Not enough data");
+		}
+		var alphvaIdx = -1;
+		if(!alpha) {
+			var _g_head = d.h;
+			while(_g_head != null) {
+				var val = _g_head.item;
+				_g_head = _g_head.next;
+				var t = val;
+				if(t._hx_index == 4) {
+					if(t.id == "tRNS") {
+						var data1 = t.data;
+						if(data1.length >= 2) {
+							alphvaIdx = data1.b[1];
+						}
+						break;
+					}
+				}
+			}
+		}
+		var _g1 = 0;
+		var _g2 = h.height;
+		while(_g1 < _g2) {
+			var y = _g1++;
+			var f = data.b[r++];
+			switch(f) {
+			case 0:
+				if(alpha) {
+					var _g3 = 0;
+					var _g4 = width;
+					while(_g3 < _g4) {
+						var x = _g3++;
+						var v = data.b[r++];
+						bgra.b[w++] = v & 255;
+						bgra.b[w++] = v & 255;
+						bgra.b[w++] = v & 255;
+						bgra.b[w++] = data.b[r++] & 255;
+					}
+				} else {
+					var _g5 = 0;
+					var _g6 = width;
+					while(_g5 < _g6) {
+						var x1 = _g5++;
+						var v1 = data.b[r++];
+						bgra.b[w++] = v1 & 255;
+						bgra.b[w++] = v1 & 255;
+						bgra.b[w++] = v1 & 255;
+						bgra.b[w++] = (v1 == alphvaIdx ? 0 : 255) & 255;
+					}
+				}
+				break;
+			case 1:
+				var cv = 0;
+				var ca = 0;
+				if(alpha) {
+					var _g7 = 0;
+					var _g8 = width;
+					while(_g7 < _g8) {
+						var x2 = _g7++;
+						cv += data.b[r++];
+						bgra.b[w++] = cv & 255;
+						bgra.b[w++] = cv & 255;
+						bgra.b[w++] = cv & 255;
+						ca += data.b[r++];
+						bgra.b[w++] = ca & 255;
+					}
+				} else {
+					var _g9 = 0;
+					var _g10 = width;
+					while(_g9 < _g10) {
+						var x3 = _g9++;
+						cv += data.b[r++];
+						bgra.b[w++] = cv & 255;
+						bgra.b[w++] = cv & 255;
+						bgra.b[w++] = cv & 255;
+						bgra.b[w++] = (cv == alphvaIdx ? 0 : 255) & 255;
+					}
+				}
+				break;
+			case 2:
+				var stride = y == 0 ? 0 : width * 4 * flipY1;
+				if(alpha) {
+					var _g11 = 0;
+					var _g12 = width;
+					while(_g11 < _g12) {
+						var x4 = _g11++;
+						var v2 = data.b[r++] + bgra.b[w - stride];
+						bgra.b[w++] = v2 & 255;
+						bgra.b[w++] = v2 & 255;
+						bgra.b[w++] = v2 & 255;
+						var va = data.b[r++] + bgra.b[w - stride];
+						bgra.b[w++] = va & 255;
+					}
+				} else {
+					var _g13 = 0;
+					var _g14 = width;
+					while(_g13 < _g14) {
+						var x5 = _g13++;
+						var v3 = data.b[r++] + bgra.b[w - stride];
+						bgra.b[w++] = v3 & 255;
+						bgra.b[w++] = v3 & 255;
+						bgra.b[w++] = v3 & 255;
+						bgra.b[w++] = (v3 == alphvaIdx ? 0 : 255) & 255;
+					}
+				}
+				break;
+			case 3:
+				var cv1 = 0;
+				var ca1 = 0;
+				var stride1 = y == 0 ? 0 : width * 4 * flipY1;
+				if(alpha) {
+					var _g15 = 0;
+					var _g16 = width;
+					while(_g15 < _g16) {
+						var x6 = _g15++;
+						cv1 = data.b[r++] + (cv1 + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cv1 & 255;
+						bgra.b[w++] = cv1 & 255;
+						bgra.b[w++] = cv1 & 255;
+						ca1 = data.b[r++] + (ca1 + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = ca1 & 255;
+					}
+				} else {
+					var _g17 = 0;
+					var _g18 = width;
+					while(_g17 < _g18) {
+						var x7 = _g17++;
+						cv1 = data.b[r++] + (cv1 + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cv1 & 255;
+						bgra.b[w++] = cv1 & 255;
+						bgra.b[w++] = cv1 & 255;
+						bgra.b[w++] = (cv1 == alphvaIdx ? 0 : 255) & 255;
+					}
+				}
+				break;
+			case 4:
+				var stride2 = width * 4 * flipY1;
+				var cv2 = 0;
+				var ca2 = 0;
+				if(alpha) {
+					var _g19 = 0;
+					var _g20 = width;
+					while(_g19 < _g20) {
+						var x8 = _g19++;
+						var b = y == 0 ? 0 : bgra.b[w - stride2];
+						var c = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k = cv2 + b - c;
+						var pa = k - cv2;
+						if(pa < 0) {
+							pa = -pa;
+						}
+						var pb = k - b;
+						if(pb < 0) {
+							pb = -pb;
+						}
+						var pc = k - c;
+						if(pc < 0) {
+							pc = -pc;
+						}
+						var pos = r++;
+						cv2 = (pa <= pb && pa <= pc ? cv2 : pb <= pc ? b : c) + data.b[pos] & 255;
+						bgra.b[w++] = cv2 & 255;
+						bgra.b[w++] = cv2 & 255;
+						bgra.b[w++] = cv2 & 255;
+						var b1 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c1 = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k1 = ca2 + b1 - c1;
+						var pa1 = k1 - ca2;
+						if(pa1 < 0) {
+							pa1 = -pa1;
+						}
+						var pb1 = k1 - b1;
+						if(pb1 < 0) {
+							pb1 = -pb1;
+						}
+						var pc1 = k1 - c1;
+						if(pc1 < 0) {
+							pc1 = -pc1;
+						}
+						var pos1 = r++;
+						ca2 = (pa1 <= pb1 && pa1 <= pc1 ? ca2 : pb1 <= pc1 ? b1 : c1) + data.b[pos1] & 255;
+						bgra.b[w++] = ca2 & 255;
+					}
+				} else {
+					var _g21 = 0;
+					var _g22 = width;
+					while(_g21 < _g22) {
+						var x9 = _g21++;
+						var b2 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c2 = x9 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k2 = cv2 + b2 - c2;
+						var pa2 = k2 - cv2;
+						if(pa2 < 0) {
+							pa2 = -pa2;
+						}
+						var pb2 = k2 - b2;
+						if(pb2 < 0) {
+							pb2 = -pb2;
+						}
+						var pc2 = k2 - c2;
+						if(pc2 < 0) {
+							pc2 = -pc2;
+						}
+						var pos2 = r++;
+						cv2 = (pa2 <= pb2 && pa2 <= pc2 ? cv2 : pb2 <= pc2 ? b2 : c2) + data.b[pos2] & 255;
+						bgra.b[w++] = cv2 & 255;
+						bgra.b[w++] = cv2 & 255;
+						bgra.b[w++] = cv2 & 255;
+						bgra.b[w++] = (cv2 == alphvaIdx ? 0 : 255) & 255;
+					}
+				}
+				break;
+			default:
+				throw haxe_Exception.thrown("Invalid filter " + f);
+			}
+			w += lineDelta;
+		}
+		break;
+	case 1:
+		var alpha = _g.alpha;
+		if(h.colbits != 8) {
+			throw haxe_Exception.thrown("Unsupported color mode");
+		}
+		var width = h.width;
+		var stride = (alpha ? 4 : 3) * width + 1;
+		if(data.length < h.height * stride) {
+			throw haxe_Exception.thrown("Not enough data");
+		}
+		var alphaRed = -1;
+		var alphaGreen = -1;
+		var alphaBlue = -1;
+		if(!alpha) {
+			var _g_head = d.h;
+			while(_g_head != null) {
+				var val = _g_head.item;
+				_g_head = _g_head.next;
+				var t = val;
+				if(t._hx_index == 4) {
+					if(t.id == "tRNS") {
+						var data1 = t.data;
+						if(data1.length >= 6) {
+							alphaRed = data1.b[1];
+							alphaGreen = data1.b[3];
+							alphaBlue = data1.b[5];
+						}
+						break;
+					}
+				}
+			}
+		}
+		var cr = 0;
+		var cg = 0;
+		var cb = 0;
+		var ca = 0;
+		var _g = 0;
+		var _g1 = h.height;
+		while(_g < _g1) {
+			var y = _g++;
+			var f = data.b[r++];
+			switch(f) {
+			case 0:
+				if(alpha) {
+					var _g2 = 0;
+					var _g3 = width;
+					while(_g2 < _g3) {
+						var x = _g2++;
+						bgra.b[w++] = data.b[r + 2] & 255;
+						bgra.b[w++] = data.b[r + 1] & 255;
+						bgra.b[w++] = data.b[r] & 255;
+						bgra.b[w++] = data.b[r + 3] & 255;
+						r += 4;
+					}
+				} else {
+					var _g4 = 0;
+					var _g5 = width;
+					while(_g4 < _g5) {
+						var x1 = _g4++;
+						cb = data.b[r + 2];
+						bgra.b[w++] = cb & 255;
+						cg = data.b[r + 1];
+						bgra.b[w++] = cg & 255;
+						cr = data.b[r];
+						bgra.b[w++] = cr & 255;
+						bgra.b[w++] = (cr == alphaRed && cg == alphaGreen && cb == alphaBlue ? 0 : 255) & 255;
+						r += 3;
+					}
+				}
+				break;
+			case 1:
+				ca = 0;
+				cb = ca;
+				cg = cb;
+				cr = cg;
+				if(alpha) {
+					var _g6 = 0;
+					var _g7 = width;
+					while(_g6 < _g7) {
+						var x2 = _g6++;
+						cb += data.b[r + 2];
+						bgra.b[w++] = cb & 255;
+						cg += data.b[r + 1];
+						bgra.b[w++] = cg & 255;
+						cr += data.b[r];
+						bgra.b[w++] = cr & 255;
+						ca += data.b[r + 3];
+						bgra.b[w++] = ca & 255;
+						r += 4;
+					}
+				} else {
+					var _g8 = 0;
+					var _g9 = width;
+					while(_g8 < _g9) {
+						var x3 = _g8++;
+						cb += data.b[r + 2];
+						bgra.b[w++] = cb & 255;
+						cg += data.b[r + 1];
+						bgra.b[w++] = cg & 255;
+						cr += data.b[r];
+						bgra.b[w++] = cr & 255;
+						bgra.b[w++] = (cr == alphaRed && cg == alphaGreen && cb == alphaBlue ? 0 : 255) & 255;
+						r += 3;
+					}
+				}
+				break;
+			case 2:
+				var stride = y == 0 ? 0 : width * 4 * flipY1;
+				if(alpha) {
+					var _g10 = 0;
+					var _g11 = width;
+					while(_g10 < _g11) {
+						var x4 = _g10++;
+						bgra.b[w] = data.b[r + 2] + bgra.b[w - stride] & 255;
+						++w;
+						bgra.b[w] = data.b[r + 1] + bgra.b[w - stride] & 255;
+						++w;
+						bgra.b[w] = data.b[r] + bgra.b[w - stride] & 255;
+						++w;
+						bgra.b[w] = data.b[r + 3] + bgra.b[w - stride] & 255;
+						++w;
+						r += 4;
+					}
+				} else {
+					var _g12 = 0;
+					var _g13 = width;
+					while(_g12 < _g13) {
+						var x5 = _g12++;
+						cb = data.b[r + 2] + bgra.b[w - stride];
+						bgra.b[w] = cb & 255;
+						++w;
+						cg = data.b[r + 1] + bgra.b[w - stride];
+						bgra.b[w] = cg & 255;
+						++w;
+						cr = data.b[r] + bgra.b[w - stride];
+						bgra.b[w] = cr & 255;
+						++w;
+						bgra.b[w++] = (cr == alphaRed && cg == alphaGreen && cb == alphaBlue ? 0 : 255) & 255;
+						r += 3;
+					}
+				}
+				break;
+			case 3:
+				ca = 0;
+				cb = ca;
+				cg = cb;
+				cr = cg;
+				var stride1 = y == 0 ? 0 : width * 4 * flipY1;
+				if(alpha) {
+					var _g14 = 0;
+					var _g15 = width;
+					while(_g14 < _g15) {
+						var x6 = _g14++;
+						cb = data.b[r + 2] + (cb + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cb & 255;
+						cg = data.b[r + 1] + (cg + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cg & 255;
+						cr = data.b[r] + (cr + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cr & 255;
+						ca = data.b[r + 3] + (ca + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = ca & 255;
+						r += 4;
+					}
+				} else {
+					var _g16 = 0;
+					var _g17 = width;
+					while(_g16 < _g17) {
+						var x7 = _g16++;
+						cb = data.b[r + 2] + (cb + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cb & 255;
+						cg = data.b[r + 1] + (cg + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cg & 255;
+						cr = data.b[r] + (cr + bgra.b[w - stride1] >> 1) & 255;
+						bgra.b[w++] = cr & 255;
+						bgra.b[w++] = (cr == alphaRed && cg == alphaGreen && cb == alphaBlue ? 0 : 255) & 255;
+						r += 3;
+					}
+				}
+				break;
+			case 4:
+				var stride2 = width * 4 * flipY1;
+				ca = 0;
+				cb = ca;
+				cg = cb;
+				cr = cg;
+				if(alpha) {
+					var _g18 = 0;
+					var _g19 = width;
+					while(_g18 < _g19) {
+						var x8 = _g18++;
+						var b = y == 0 ? 0 : bgra.b[w - stride2];
+						var c = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k = cb + b - c;
+						var pa = k - cb;
+						if(pa < 0) {
+							pa = -pa;
+						}
+						var pb = k - b;
+						if(pb < 0) {
+							pb = -pb;
+						}
+						var pc = k - c;
+						if(pc < 0) {
+							pc = -pc;
+						}
+						cb = (pa <= pb && pa <= pc ? cb : pb <= pc ? b : c) + data.b[r + 2] & 255;
+						bgra.b[w++] = cb & 255;
+						var b1 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c1 = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k1 = cg + b1 - c1;
+						var pa1 = k1 - cg;
+						if(pa1 < 0) {
+							pa1 = -pa1;
+						}
+						var pb1 = k1 - b1;
+						if(pb1 < 0) {
+							pb1 = -pb1;
+						}
+						var pc1 = k1 - c1;
+						if(pc1 < 0) {
+							pc1 = -pc1;
+						}
+						cg = (pa1 <= pb1 && pa1 <= pc1 ? cg : pb1 <= pc1 ? b1 : c1) + data.b[r + 1] & 255;
+						bgra.b[w++] = cg & 255;
+						var b2 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c2 = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k2 = cr + b2 - c2;
+						var pa2 = k2 - cr;
+						if(pa2 < 0) {
+							pa2 = -pa2;
+						}
+						var pb2 = k2 - b2;
+						if(pb2 < 0) {
+							pb2 = -pb2;
+						}
+						var pc2 = k2 - c2;
+						if(pc2 < 0) {
+							pc2 = -pc2;
+						}
+						cr = (pa2 <= pb2 && pa2 <= pc2 ? cr : pb2 <= pc2 ? b2 : c2) + data.b[r] & 255;
+						bgra.b[w++] = cr & 255;
+						var b3 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c3 = x8 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k3 = ca + b3 - c3;
+						var pa3 = k3 - ca;
+						if(pa3 < 0) {
+							pa3 = -pa3;
+						}
+						var pb3 = k3 - b3;
+						if(pb3 < 0) {
+							pb3 = -pb3;
+						}
+						var pc3 = k3 - c3;
+						if(pc3 < 0) {
+							pc3 = -pc3;
+						}
+						ca = (pa3 <= pb3 && pa3 <= pc3 ? ca : pb3 <= pc3 ? b3 : c3) + data.b[r + 3] & 255;
+						bgra.b[w++] = ca & 255;
+						r += 4;
+					}
+				} else {
+					var _g20 = 0;
+					var _g21 = width;
+					while(_g20 < _g21) {
+						var x9 = _g20++;
+						var b4 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c4 = x9 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k4 = cb + b4 - c4;
+						var pa4 = k4 - cb;
+						if(pa4 < 0) {
+							pa4 = -pa4;
+						}
+						var pb4 = k4 - b4;
+						if(pb4 < 0) {
+							pb4 = -pb4;
+						}
+						var pc4 = k4 - c4;
+						if(pc4 < 0) {
+							pc4 = -pc4;
+						}
+						cb = (pa4 <= pb4 && pa4 <= pc4 ? cb : pb4 <= pc4 ? b4 : c4) + data.b[r + 2] & 255;
+						bgra.b[w++] = cb & 255;
+						var b5 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c5 = x9 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k5 = cg + b5 - c5;
+						var pa5 = k5 - cg;
+						if(pa5 < 0) {
+							pa5 = -pa5;
+						}
+						var pb5 = k5 - b5;
+						if(pb5 < 0) {
+							pb5 = -pb5;
+						}
+						var pc5 = k5 - c5;
+						if(pc5 < 0) {
+							pc5 = -pc5;
+						}
+						cg = (pa5 <= pb5 && pa5 <= pc5 ? cg : pb5 <= pc5 ? b5 : c5) + data.b[r + 1] & 255;
+						bgra.b[w++] = cg & 255;
+						var b6 = y == 0 ? 0 : bgra.b[w - stride2];
+						var c6 = x9 == 0 || y == 0 ? 0 : bgra.b[w - stride2 - 4];
+						var k6 = cr + b6 - c6;
+						var pa6 = k6 - cr;
+						if(pa6 < 0) {
+							pa6 = -pa6;
+						}
+						var pb6 = k6 - b6;
+						if(pb6 < 0) {
+							pb6 = -pb6;
+						}
+						var pc6 = k6 - c6;
+						if(pc6 < 0) {
+							pc6 = -pc6;
+						}
+						cr = (pa6 <= pb6 && pa6 <= pc6 ? cr : pb6 <= pc6 ? b6 : c6) + data.b[r] & 255;
+						bgra.b[w++] = cr & 255;
+						bgra.b[w++] = (cr == alphaRed && cg == alphaGreen && cb == alphaBlue ? 0 : 255) & 255;
+						r += 3;
+					}
+				}
+				break;
+			default:
+				throw haxe_Exception.thrown("Invalid filter " + f);
+			}
+			w += lineDelta;
+		}
+		break;
+	case 2:
+		var pal = format_png_Tools.getPalette(d);
+		if(pal == null) {
+			throw haxe_Exception.thrown("PNG Palette is missing");
+		}
+		var alpha = null;
+		var _g_head = d.h;
+		while(_g_head != null) {
+			var val = _g_head.item;
+			_g_head = _g_head.next;
+			var t = val;
+			if(t._hx_index == 4) {
+				if(t.id == "tRNS") {
+					var data1 = t.data;
+					alpha = data1;
+					break;
+				}
+			}
+		}
+		if(alpha != null && alpha.length < 1 << h.colbits) {
+			var alpha2 = new haxe_io_Bytes(new ArrayBuffer(1 << h.colbits));
+			alpha2.blit(0,alpha,0,alpha.length);
+			alpha2.fill(alpha.length,alpha2.length - alpha.length,255);
+			alpha = alpha2;
+		}
+		var width = h.width;
+		var stride = Math.ceil(width * h.colbits / 8) + 1;
+		if(data.length < h.height * stride) {
+			throw haxe_Exception.thrown("Not enough data");
+		}
+		var rline = stride - 1;
+		var _g = 0;
+		var _g1 = h.height;
+		while(_g < _g1) {
+			var y = _g++;
+			var f = data.b[r++];
+			if(f == 0) {
+				r += rline;
+				continue;
+			}
+			switch(f) {
+			case 1:
+				var c = 0;
+				var _g2 = 0;
+				var _g3 = width;
+				while(_g2 < _g3) {
+					var x = _g2++;
+					var v = data.b[r];
+					c += v;
+					data.b[r++] = c & 255 & 255;
+				}
+				break;
+			case 2:
+				var stride = y == 0 ? 0 : rline + 1;
+				var _g4 = 0;
+				var _g5 = width;
+				while(_g4 < _g5) {
+					var x1 = _g4++;
+					var v1 = data.b[r];
+					data.b[r] = v1 + data.b[r - stride] & 255;
+					++r;
+				}
+				break;
+			case 3:
+				var c1 = 0;
+				var stride1 = y == 0 ? 0 : rline + 1;
+				var _g6 = 0;
+				var _g7 = width;
+				while(_g6 < _g7) {
+					var x2 = _g6++;
+					var v2 = data.b[r];
+					c1 = v2 + (c1 + data.b[r - stride1] >> 1) & 255;
+					data.b[r++] = c1 & 255;
+				}
+				break;
+			case 4:
+				var stride2 = rline + 1;
+				var c2 = 0;
+				var _g8 = 0;
+				var _g9 = width;
+				while(_g8 < _g9) {
+					var x3 = _g8++;
+					var v3 = data.b[r];
+					var numChannels = 1;
+					if(numChannels == null) {
+						numChannels = 4;
+					}
+					var b = y == 0 ? 0 : data.b[r - stride2];
+					var c3 = x3 == 0 || y == 0 ? 0 : data.b[r - stride2 - numChannels];
+					var k = c2 + b - c3;
+					var pa = k - c2;
+					if(pa < 0) {
+						pa = -pa;
+					}
+					var pb = k - b;
+					if(pb < 0) {
+						pb = -pb;
+					}
+					var pc = k - c3;
+					if(pc < 0) {
+						pc = -pc;
+					}
+					c2 = (pa <= pb && pa <= pc ? c2 : pb <= pc ? b : c3) + v3 & 255;
+					data.b[r++] = c2 & 255;
+				}
+				break;
+			default:
+				throw haxe_Exception.thrown("Invalid filter " + f);
+			}
+		}
+		var r = 0;
+		if(h.colbits == 8) {
+			var _g = 0;
+			var _g1 = h.height;
+			while(_g < _g1) {
+				var y = _g++;
+				++r;
+				var _g2 = 0;
+				var _g3 = h.width;
+				while(_g2 < _g3) {
+					var x = _g2++;
+					var c = data.b[r++];
+					bgra.b[w++] = pal.b[c * 3 + 2] & 255;
+					bgra.b[w++] = pal.b[c * 3 + 1] & 255;
+					bgra.b[w++] = pal.b[c * 3] & 255;
+					bgra.b[w++] = (alpha != null ? alpha.b[c] : 255) & 255;
+				}
+				w += lineDelta;
+			}
+		} else if(h.colbits < 8) {
+			var req = h.colbits;
+			var mask = (1 << req) - 1;
+			var _g = 0;
+			var _g1 = h.height;
+			while(_g < _g1) {
+				var y = _g++;
+				++r;
+				var bits = 0;
+				var nbits = 0;
+				var _g2 = 0;
+				var _g3 = h.width;
+				while(_g2 < _g3) {
+					var x = _g2++;
+					if(nbits < req) {
+						bits = bits << 8 | data.b[r++];
+						nbits += 8;
+					}
+					var c = bits >>> nbits - req & mask;
+					nbits -= req;
+					bgra.b[w++] = pal.b[c * 3 + 2] & 255;
+					bgra.b[w++] = pal.b[c * 3 + 1] & 255;
+					bgra.b[w++] = pal.b[c * 3] & 255;
+					bgra.b[w++] = (alpha != null ? alpha.b[c] : 255) & 255;
+				}
+				w += lineDelta;
+			}
+		} else {
+			throw haxe_Exception.thrown(h.colbits + " indexed bits per pixel not supported");
+		}
+		break;
+	}
+	return bgra;
+};
+format_png_Tools.extract = function(d,output,expandAlpha) {
+	if(expandAlpha == null) {
+		expandAlpha = false;
+	}
+	var h = format_png_Tools.getHeader(d);
+	var hasAlpha = false;
+	var channels;
+	var _g = h.color;
+	switch(_g._hx_index) {
+	case 0:
+		var alpha = _g.alpha;
+		hasAlpha = alpha;
+		channels = alpha ? 2 : 1;
+		break;
+	case 1:
+		var alpha = _g.alpha;
+		hasAlpha = alpha;
+		channels = alpha ? 4 : 3;
+		break;
+	case 2:
+		throw haxe_Exception.thrown("assert");
+	}
+	if(expandAlpha && hasAlpha) {
+		expandAlpha = false;
+	}
+	var bpp = h.colbits >> 3;
+	var outChannels = expandAlpha ? channels + 1 : channels;
+	if(output == null) {
+		output = new haxe_io_Bytes(new ArrayBuffer(outChannels * bpp * h.width * h.height));
+	}
+	var data = null;
+	var fullData = null;
+	var _g_head = d.h;
+	while(_g_head != null) {
+		var val = _g_head.item;
+		_g_head = _g_head.next;
+		var c = val;
+		if(c._hx_index == 2) {
+			var b = c.b;
+			if(fullData != null) {
+				fullData.add(b);
+			} else if(data == null) {
+				data = b;
+			} else {
+				fullData = new haxe_io_BytesBuffer();
+				fullData.add(data);
+				fullData.add(b);
+				data = null;
+			}
+		}
+	}
+	if(fullData != null) {
+		data = fullData.getBytes();
+	}
+	if(data == null) {
+		throw haxe_Exception.thrown("Data not found");
+	}
+	data = format_tools_Inflate.run(data);
+	var r = 0;
+	var w = 0;
+	var width = h.width;
+	var ncomps = channels * bpp;
+	var upperLine = outChannels * bpp * width;
+	var leftPixel = outChannels * bpp;
+	if(data.length < h.height * (ncomps * width + 1)) {
+		throw haxe_Exception.thrown("Not enough data");
+	}
+	var _g = [];
+	var _g1 = 0;
+	var _g2 = ncomps;
+	while(_g1 < _g2) {
+		var i = _g1++;
+		_g.push(0);
+	}
+	var tmp = _g;
+	var _g = 0;
+	var _g1 = h.height;
+	while(_g < _g1) {
+		var y = _g++;
+		var f = data.b[r++];
+		if(f != 0 && f != 2) {
+			var _g2 = 0;
+			var _g3 = ncomps;
+			while(_g2 < _g3) {
+				var i = _g2++;
+				tmp[i] = 0;
+			}
+		}
+		switch(f) {
+		case 0:
+			var _g4 = 0;
+			var _g5 = width;
+			while(_g4 < _g5) {
+				var x = _g4++;
+				var _g6 = 0;
+				var _g7 = ncomps;
+				while(_g6 < _g7) {
+					var i1 = _g6++;
+					output.b[w++] = data.b[r++] & 255;
+				}
+				if(expandAlpha) {
+					output.b[w++] = 255;
+					if(bpp == 2) {
+						output.b[w++] = 255;
+					}
+				}
+			}
+			break;
+		case 1:
+			var _g8 = 0;
+			var _g9 = width;
+			while(_g8 < _g9) {
+				var x1 = _g8++;
+				var _g10 = 0;
+				var _g11 = ncomps;
+				while(_g10 < _g11) {
+					var i2 = _g10++;
+					tmp[i2] += data.b[r++];
+					output.b[w++] = tmp[i2] & 255;
+				}
+				if(expandAlpha) {
+					output.b[w++] = 255;
+					if(bpp == 2) {
+						output.b[w++] = 255;
+					}
+				}
+			}
+			break;
+		case 2:
+			var stride = y == 0 ? 0 : upperLine;
+			var _g12 = 0;
+			var _g13 = width;
+			while(_g12 < _g13) {
+				var x2 = _g12++;
+				var _g14 = 0;
+				var _g15 = ncomps;
+				while(_g14 < _g15) {
+					var i3 = _g14++;
+					var v = data.b[r++] + output.b[w - stride];
+					output.b[w++] = v & 255;
+				}
+				if(expandAlpha) {
+					output.b[w++] = 255;
+					if(bpp == 2) {
+						output.b[w++] = 255;
+					}
+				}
+			}
+			break;
+		case 3:
+			var stride1 = y == 0 ? 0 : upperLine;
+			var _g16 = 0;
+			var _g17 = width;
+			while(_g16 < _g17) {
+				var x3 = _g16++;
+				var _g18 = 0;
+				var _g19 = ncomps;
+				while(_g18 < _g19) {
+					var i4 = _g18++;
+					tmp[i4] = data.b[r++] + (tmp[i4] + output.b[w - stride1] >> 1) & 255;
+					output.b[w++] = tmp[i4] & 255;
+				}
+				if(expandAlpha) {
+					output.b[w++] = 255;
+					if(bpp == 2) {
+						output.b[w++] = 255;
+					}
+				}
+			}
+			break;
+		case 4:
+			var _g20 = 0;
+			var _g21 = width;
+			while(_g20 < _g21) {
+				var x4 = _g20++;
+				var _g22 = 0;
+				var _g23 = ncomps;
+				while(_g22 < _g23) {
+					var i5 = _g22++;
+					var prev = tmp[i5];
+					var b = y == 0 ? 0 : output.b[w - upperLine];
+					var c = x4 == 0 || y == 0 ? 0 : output.b[w - upperLine - leftPixel];
+					var k = prev + b - c;
+					var pa = k - prev;
+					if(pa < 0) {
+						pa = -pa;
+					}
+					var pb = k - b;
+					if(pb < 0) {
+						pb = -pb;
+					}
+					var pc = k - c;
+					if(pc < 0) {
+						pc = -pc;
+					}
+					var pos = r++;
+					tmp[i5] = (pa <= pb && pa <= pc ? prev : pb <= pc ? b : c) + data.b[pos] & 255;
+					output.b[w++] = tmp[i5] & 255;
+				}
+				if(expandAlpha) {
+					output.b[w++] = 255;
+					if(bpp == 2) {
+						output.b[w++] = 255;
+					}
+				}
+			}
+			break;
+		default:
+			throw haxe_Exception.thrown("Invalid filter " + f);
+		}
+	}
+	if(h.colbits == 16) {
+		var w = 0;
+		var _g = 0;
+		var _g1 = h.height * width * outChannels;
+		while(_g < _g1) {
+			var x = _g++;
+			var a = output.b[w];
+			var b = output.b[w + 1];
+			output.b[w++] = b & 255;
+			output.b[w++] = a & 255;
+		}
+	}
+	return output;
+};
+format_png_Tools.buildGrey = function(width,height,data,level) {
+	if(level == null) {
+		level = 9;
+	}
+	var rgb = new haxe_io_Bytes(new ArrayBuffer(width * height + height));
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	var _g1 = height;
+	while(_g < _g1) {
+		var y = _g++;
+		rgb.b[w++] = 0;
+		var _g2 = 0;
+		var _g3 = width;
+		while(_g2 < _g3) {
+			var x = _g2++;
+			rgb.b[w++] = data.b[r++] & 255;
+		}
+	}
+	var l = new haxe_ds_List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColGrey(false), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgb,level)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.buildIndexed = function(width,height,data,palette,level) {
+	if(level == null) {
+		level = 9;
+	}
+	var rgb = new haxe_io_Bytes(new ArrayBuffer(width * height + height));
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	var _g1 = height;
+	while(_g < _g1) {
+		var y = _g++;
+		rgb.b[w++] = 0;
+		var _g2 = 0;
+		var _g3 = width;
+		while(_g2 < _g3) {
+			var x = _g2++;
+			rgb.b[w++] = data.b[r++] & 255;
+		}
+	}
+	var l = new haxe_ds_List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColIndexed, interlaced : false}));
+	l.add(format_png_Chunk.CPalette(palette));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgb,level)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.buildRGB = function(width,height,data,level) {
+	if(level == null) {
+		level = 9;
+	}
+	var rgb = new haxe_io_Bytes(new ArrayBuffer(width * height * 3 + height));
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	var _g1 = height;
+	while(_g < _g1) {
+		var y = _g++;
+		rgb.b[w++] = 0;
+		var _g2 = 0;
+		var _g3 = width;
+		while(_g2 < _g3) {
+			var x = _g2++;
+			rgb.b[w++] = data.b[r + 2] & 255;
+			rgb.b[w++] = data.b[r + 1] & 255;
+			rgb.b[w++] = data.b[r] & 255;
+			r += 3;
+		}
+	}
+	var l = new haxe_ds_List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(false), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgb,level)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.build32ARGB = function(width,height,data,level) {
+	if(level == null) {
+		level = 9;
+	}
+	var rgba = new haxe_io_Bytes(new ArrayBuffer(width * height * 4 + height));
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	var _g1 = height;
+	while(_g < _g1) {
+		var y = _g++;
+		rgba.b[w++] = 0;
+		var _g2 = 0;
+		var _g3 = width;
+		while(_g2 < _g3) {
+			var x = _g2++;
+			rgba.b[w++] = data.b[r + 1] & 255;
+			rgba.b[w++] = data.b[r + 2] & 255;
+			rgba.b[w++] = data.b[r + 3] & 255;
+			rgba.b[w++] = data.b[r] & 255;
+			r += 4;
+		}
+	}
+	var l = new haxe_ds_List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(true), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgba,level)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.build32BGRA = function(width,height,data,level) {
+	if(level == null) {
+		level = 9;
+	}
+	var rgba = new haxe_io_Bytes(new ArrayBuffer(width * height * 4 + height));
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	var _g1 = height;
+	while(_g < _g1) {
+		var y = _g++;
+		rgba.b[w++] = 0;
+		var _g2 = 0;
+		var _g3 = width;
+		while(_g2 < _g3) {
+			var x = _g2++;
+			rgba.b[w++] = data.b[r + 2] & 255;
+			rgba.b[w++] = data.b[r + 1] & 255;
+			rgba.b[w++] = data.b[r] & 255;
+			rgba.b[w++] = data.b[r + 3] & 255;
+			r += 4;
+		}
+	}
+	var l = new haxe_ds_List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(true), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgba,level)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+var format_png_Writer = function(o) {
+	this.o = o;
+	o.set_bigEndian(true);
+};
+$hxClasses["format.png.Writer"] = format_png_Writer;
+format_png_Writer.__name__ = "format.png.Writer";
+format_png_Writer.prototype = {
+	o: null
+	,write: function(png) {
+		var _g = 0;
+		var _g1 = [137,80,78,71,13,10,26,10];
+		while(_g < _g1.length) {
+			var b = _g1[_g];
+			++_g;
+			this.o.writeByte(b);
+		}
+		var _g_head = png.h;
+		while(_g_head != null) {
+			var val = _g_head.item;
+			_g_head = _g_head.next;
+			var c = val;
+			switch(c._hx_index) {
+			case 0:
+				this.writeChunk("IEND",new haxe_io_Bytes(new ArrayBuffer(0)));
+				break;
+			case 1:
+				var h = c.h;
+				var b = new haxe_io_BytesOutput();
+				b.set_bigEndian(true);
+				b.writeInt32(h.width);
+				b.writeInt32(h.height);
+				b.writeByte(h.colbits);
+				var _g = h.color;
+				var tmp;
+				switch(_g._hx_index) {
+				case 0:
+					var alpha = _g.alpha;
+					tmp = alpha ? 4 : 0;
+					break;
+				case 1:
+					var alpha1 = _g.alpha;
+					tmp = alpha1 ? 6 : 2;
+					break;
+				case 2:
+					tmp = 3;
+					break;
+				}
+				b.writeByte(tmp);
+				b.writeByte(0);
+				b.writeByte(0);
+				b.writeByte(h.interlaced ? 1 : 0);
+				this.writeChunk("IHDR",b.getBytes());
+				break;
+			case 2:
+				var d = c.b;
+				this.writeChunk("IDAT",d);
+				break;
+			case 3:
+				var b1 = c.b;
+				this.writeChunk("PLTE",b1);
+				break;
+			case 4:
+				var id = c.id;
+				var data = c.data;
+				this.writeChunk(id,data);
+				break;
+			}
+		}
+	}
+	,writeChunk: function(id,data) {
+		this.o.writeInt32(data.length);
+		this.o.writeString(id);
+		this.o.write(data);
+		var crc_crc = -1;
+		var _g = 0;
+		while(_g < 4) {
+			var i = _g++;
+			var tmp = (crc_crc ^ HxOverrides.cca(id,i)) & 255;
+			var _g1 = 0;
+			while(_g1 < 8) {
+				var j = _g1++;
+				tmp = tmp >>> 1 ^ -(tmp & 1) & -306674912;
+			}
+			crc_crc = crc_crc >>> 8 ^ tmp;
+		}
+		var b = data.b.bufferValue;
+		var _g = 0;
+		var _g1 = data.length;
+		while(_g < _g1) {
+			var i = _g++;
+			var tmp = (crc_crc ^ b.bytes[i]) & 255;
+			var _g2 = 0;
+			while(_g2 < 8) {
+				var j = _g2++;
+				tmp = tmp >>> 1 ^ -(tmp & 1) & -306674912;
+			}
+			crc_crc = crc_crc >>> 8 ^ tmp;
+		}
+		this.o.writeInt32(crc_crc ^ -1);
+	}
+	,__class__: format_png_Writer
+};
+var format_tools_Deflate = function() { };
+$hxClasses["format.tools.Deflate"] = format_tools_Deflate;
+format_tools_Deflate.__name__ = "format.tools.Deflate";
+format_tools_Deflate.run = function(b,level) {
+	if(level == null) {
+		level = 9;
+	}
+	return haxe_zip_Compress.run(b,level);
+};
+var format_tools_Inflate = function() { };
+$hxClasses["format.tools.Inflate"] = format_tools_Inflate;
+format_tools_Inflate.__name__ = "format.tools.Inflate";
+format_tools_Inflate.run = function(bytes) {
+	return haxe_zip_Uncompress.run(bytes);
+};
 var haxe_StackItem = $hxEnums["haxe.StackItem"] = { __ename__:"haxe.StackItem",__constructs__:null
 	,CFunction: {_hx_name:"CFunction",_hx_index:0,__enum__:"haxe.StackItem",toString:$estr}
 	,Module: ($_=function(m) { return {_hx_index:1,m:m,__enum__:"haxe.StackItem",toString:$estr}; },$_._hx_name="Module",$_.__params__ = ["m"],$_)
@@ -101807,6 +105315,13 @@ haxe_io_Output.prototype = {
 			l -= k;
 		}
 	}
+	,writeFullBytes: function(s,pos,len) {
+		while(len > 0) {
+			var k = this.writeBytes(s,pos,len);
+			pos += k;
+			len -= k;
+		}
+	}
 	,writeFloat: function(x) {
 		this.writeInt32(haxe_io_FPHelper.floatToI32(x));
 	}
@@ -101856,6 +105371,10 @@ haxe_io_Output.prototype = {
 			this.writeByte(x >> 16 & 255);
 			this.writeByte(x >>> 24);
 		}
+	}
+	,writeString: function(s,encoding) {
+		var b = haxe_io_Bytes.ofString(s,encoding);
+		this.writeFullBytes(b,0,b.length);
 	}
 	,__class__: haxe_io_Output
 	,__properties__: {set_bigEndian:"set_bigEndian"}
@@ -103049,6 +106568,12 @@ haxe_xml_Printer.prototype = {
 	}
 	,__class__: haxe_xml_Printer
 };
+var haxe_zip_Compress = function() { };
+$hxClasses["haxe.zip.Compress"] = haxe_zip_Compress;
+haxe_zip_Compress.__name__ = "haxe.zip.Compress";
+haxe_zip_Compress.run = function(s,level) {
+	throw new haxe_exceptions_NotImplementedException("Not implemented for this platform",null,{ fileName : "haxe/zip/Compress.hx", lineNumber : 39, className : "haxe.zip.Compress", methodName : "run"});
+};
 var haxe_zip_ExtraField = $hxEnums["haxe.zip.ExtraField"] = { __ename__:"haxe.zip.ExtraField",__constructs__:null
 	,FUnknown: ($_=function(tag,bytes) { return {_hx_index:0,tag:tag,bytes:bytes,__enum__:"haxe.zip.ExtraField",toString:$estr}; },$_._hx_name="FUnknown",$_.__params__ = ["tag","bytes"],$_)
 	,FInfoZipUnicodePath: ($_=function(name,crc) { return {_hx_index:1,name:name,crc:crc,__enum__:"haxe.zip.ExtraField",toString:$estr}; },$_._hx_name="FInfoZipUnicodePath",$_.__params__ = ["name","crc"],$_)
@@ -103275,6 +106800,22 @@ var haxe_zip_InflateImpl = function(i,header,crc) {
 };
 $hxClasses["haxe.zip.InflateImpl"] = haxe_zip_InflateImpl;
 haxe_zip_InflateImpl.__name__ = "haxe.zip.InflateImpl";
+haxe_zip_InflateImpl.run = function(i,bufsize) {
+	if(bufsize == null) {
+		bufsize = 65536;
+	}
+	var buf = new haxe_io_Bytes(new ArrayBuffer(bufsize));
+	var output = new haxe_io_BytesBuffer();
+	var inflate = new haxe_zip_InflateImpl(i);
+	while(true) {
+		var len = inflate.readBytes(buf,0,bufsize);
+		output.addBytes(buf,0,len);
+		if(len < bufsize) {
+			break;
+		}
+	}
+	return output.getBytes();
+};
 haxe_zip_InflateImpl.prototype = {
 	nbits: null
 	,bits: null
@@ -103701,6 +107242,12 @@ haxe_zip_Reader.prototype = {
 		return l;
 	}
 	,__class__: haxe_zip_Reader
+};
+var haxe_zip_Uncompress = function() { };
+$hxClasses["haxe.zip.Uncompress"] = haxe_zip_Uncompress;
+haxe_zip_Uncompress.__name__ = "haxe.zip.Uncompress";
+haxe_zip_Uncompress.run = function(src,bufsize) {
+	return haxe_zip_InflateImpl.run(new haxe_io_BytesInput(src),bufsize);
 };
 var hscript_Const = $hxEnums["hscript.Const"] = { __ename__:"hscript.Const",__constructs__:null
 	,CInt: ($_=function(v) { return {_hx_index:0,v:v,__enum__:"hscript.Const",toString:$estr}; },$_._hx_name="CInt",$_.__params__ = ["v"],$_)
@@ -133561,7 +137108,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 436861;
+	this.version = 725467;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -146685,7 +150232,7 @@ online_gui_sidebar_tabs_SmolProfile.prototype = $extend(openfl_display_Sprite.pr
 				if(avatarData == null) {
 					iconData = haxe_ds_Either.Left(online_network_FunkinNetwork.getDefaultAvatar());
 				} else if(!online_util_ShitUtil.isGIF(avatarData)) {
-					iconData = haxe_ds_Either.Left(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(avatarData)));
+					iconData = haxe_ds_Either.Left(backend_WebImage.fromBytes(avatarData));
 				} else {
 					iconData = haxe_ds_Either.Right(com_yagp_GifDecoder.parseBytes(avatarData));
 				}
@@ -147362,7 +150909,7 @@ online_gui_sidebar_tabs_Notification.prototype = $extend(openfl_display_Sprite.p
 				if(imgData == null) {
 					iconData = haxe_ds_Either.Left(online_network_FunkinNetwork.getDefaultAvatar());
 				} else if(!online_util_ShitUtil.isGIF(imgData)) {
-					iconData = haxe_ds_Either.Left(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(imgData)));
+					iconData = haxe_ds_Either.Left(backend_WebImage.fromBytes(imgData));
 				} else {
 					iconData = haxe_ds_Either.Right(com_yagp_GifDecoder.parseBytes(imgData));
 				}
@@ -148049,7 +151596,7 @@ online_gui_sidebar_tabs_ProfileTab.prototype = $extend(online_gui_sidebar_obj_Ta
 						var tmp = online_network_FunkinNetwork.getDefaultAvatar();
 						_gthis.avatar = new openfl_display_Bitmap(tmp);
 					} else if(!online_util_ShitUtil.isGIF(avatarData)) {
-						var tmp = openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(avatarData));
+						var tmp = backend_WebImage.fromBytes(avatarData);
 						_gthis.avatar = new openfl_display_Bitmap(tmp);
 					} else {
 						var tmp = com_yagp_GifDecoder.parseBytes(avatarData);
@@ -148115,7 +151662,7 @@ online_gui_sidebar_tabs_ProfileTab.prototype = $extend(online_gui_sidebar_obj_Ta
 			online_backend_Waiter.putPersist(function() {
 				if(_gthis.flag != null && loadingUser == _gthis.username) {
 					_gthis.flag.set_visible(true);
-					_gthis.flag.set_bitmapData(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(flagResponse.getBytes())));
+					_gthis.flag.set_bitmapData(backend_WebImage.fromBytes(flagResponse.getBytes()));
 					_gthis.updateUsernameText();
 				}
 			},{ fileName : "source/online/gui/sidebar/tabs/ProfileTab.hx", lineNumber : 364, className : "online.gui.sidebar.tabs.ProfileTab", methodName : "loadFlag"});
@@ -149241,7 +152788,7 @@ online_mods_OnlineMods.installMod = function(fileName,modURL,gbMod,onSuccess) {
 				if(key == null) {
 					key = "";
 				}
-				var iconGrid = openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(sys_io_File.getBytes("mods/" + key)));
+				var iconGrid = backend_WebImage.fromBytes(sys_io_File.getBytes("mods/" + key));
 				var byteArray = new openfl_utils_ByteArrayData(0);
 				iconGrid.encode(new openfl_geom_Rectangle(0,0,300,150),new openfl_display_PNGEncoderOptions(),byteArray);
 				var key = modName + "/images/icons/icon-bf.png";
@@ -151206,7 +154753,7 @@ online_objects_ProfileBox.prototype = $extend(flixel_group_FlxTypedSpriteGroup.p
 								var tmp = online_network_FunkinNetwork.getDefaultAvatar();
 								_gthis.avatar = new flixel_FlxSprite(0,0,tmp);
 							} else if(!online_util_ShitUtil.isGIF(avatarData)) {
-								var tmp = openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(avatarData));
+								var tmp = backend_WebImage.fromBytes(avatarData);
 								_gthis.avatar = new flixel_FlxSprite(0,0,tmp);
 							} else {
 								_gthis.avatar = new online_objects_FlxGifSprite(avatarData);
@@ -152915,7 +156462,7 @@ var online_states_ModItem = function(mod) {
 			categoryName.set_visible(true);
 			categoryNameBg.set_visible(true);
 			if(err == null || bytes == null) {
-				category.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(bytes))));
+				category.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(backend_WebImage.fromBytes(bytes)));
 				category.set_antialiasing(backend_ClientPrefs.data.antialiasing);
 				category.set_x(_gthis.bg.x + _gthis.bg.get_width() - category.get_width());
 				category.set_visible(true);
@@ -153169,7 +156716,7 @@ online_states_ModItem.prototype = $extend(flixel_group_FlxTypedSpriteGroup.proto
 					} else {
 						_gthis.thumb.set_clipRect(null);
 					}
-					_gthis.thumb.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(bytes)),false,null,false));
+					_gthis.thumb.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(backend_WebImage.fromBytes(bytes),false,null,false));
 					_gthis.thumb.set_antialiasing(backend_ClientPrefs.data.antialiasing);
 					if(_gthis.mod.thumbnail.width != -1 && _gthis.mod.thumbnail.height != -1) {
 						if(_gthis.mod.thumbnail.height < _gthis.thumb.clipRect.height) {
@@ -153193,7 +156740,7 @@ online_states_ModItem.prototype = $extend(flixel_group_FlxTypedSpriteGroup.proto
 						return;
 					}
 					_gthis.thumb.set_clipRect(null);
-					_gthis.thumb.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(openfl_display_BitmapData.fromBytes(openfl_utils_ByteArray.fromBytes(bytes)),false,null,false));
+					_gthis.thumb.loadGraphic(flixel_graphics_FlxGraphic.fromBitmapData(backend_WebImage.fromBytes(bytes),false,null,false));
 					_gthis.thumb.set_antialiasing(backend_ClientPrefs.data.antialiasing);
 					_gthis.thumb.setGraphicSize(online_states_ModItem.FRAME_WIDTH,125);
 					_gthis.thumb.updateHitbox();
@@ -221970,7 +225517,7 @@ states_ModsMenuState.prototype = $extend(backend_MusicBeatState.prototype,{
 			}
 			var iconToUse = "mods/" + key1;
 			if(sys_FileSystem.exists(iconToUse)) {
-				loadedIcon = openfl_display_BitmapData.fromFile(iconToUse);
+				loadedIcon = backend_WebImage.fromFile(iconToUse);
 			}
 			newMod.icon = new objects_AttachedSprite();
 			if(loadedIcon != null) {
@@ -254199,7 +257746,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "752ecaf12c248e1e850ffb050ab53475b11880b6";
+Main.GIT_COMMIT = "4b650754417cdc92fa0ec32aedffea0549ab28dc";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
@@ -256059,6 +259606,7 @@ openfl_geom_Matrix3D.__meta__ = { statics : { create2D : { SuppressWarnings : ["
 flxanimate_motion_AdjustColor.s_arrayOfDeltaIndex = [0,0.01,0.02,0.04,0.05,0.06,0.07,0.08,0.1,0.11,0.12,0.14,0.15,0.16,0.17,0.18,0.20,0.21,0.22,0.24,0.25,0.27,0.28,0.30,0.32,0.34,0.36,0.38,0.40,0.42,0.44,0.46,0.48,0.5,0.53,0.56,0.59,0.62,0.65,0.68,0.71,0.74,0.77,0.80,0.83,0.86,0.89,0.92,0.95,0.98,1.0,1.06,1.12,1.18,1.24,1.30,1.36,1.42,1.48,1.54,1.60,1.66,1.72,1.78,1.84,1.90,1.96,2.0,2.12,2.25,2.37,2.50,2.62,2.75,2.87,3.0,3.2,3.4,3.6,3.8,4.0,4.3,4.7,4.9,5.0,5.5,6.0,6.5,6.8,7.0,7.3,7.5,7.8,8.0,8.4,8.7,9.0,9.4,9.6,9.8,10.0];
 flxanimate_motion_DynamicMatrix.MATRIX_ORDER_PREPEND = 0;
 flxanimate_motion_DynamicMatrix.MATRIX_ORDER_APPEND = 1;
+format_amf3_Amf3Array.__meta__ = { fields : { extra : { optional : null}}};
 haxe_Serializer.USE_CACHE = false;
 haxe_Serializer.USE_ENUM_INDEX = false;
 haxe_Serializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";

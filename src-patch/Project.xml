@@ -126,6 +126,7 @@
 		<haxelib name="json2object" />
 		<haxelib name="hxjsonast" />
 		<haxelib name="flxanimate" />
+		<haxelib name="format" />
 		<haxelib name="actuate" />
 		<haxelib name="compiletime" />
 		<haxelib name="grig.audio" unless="html5" />

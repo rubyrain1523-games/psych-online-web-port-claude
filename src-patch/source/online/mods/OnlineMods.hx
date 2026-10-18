@@ -334,7 +334,7 @@ class OnlineMods {
 				if (!FileSystem.exists(Paths.mods(modName + '/images/icons/icon-bf.png'))
 					&& FileSystem.exists(Paths.mods(modName + '/images/iconGrid.png'))) {
 					FileSystem.createDirectory(Paths.mods(modName + '/images/icons/'));
-					var iconGrid = BitmapData.fromBytes(File.getBytes(Paths.mods(modName + '/images/iconGrid.png')));
+					var iconGrid = backend.WebImage.fromBytes(File.getBytes(Paths.mods(modName + "/images/iconGrid.png")));
 					var byteArray:ByteArray = new ByteArray();
 					iconGrid.encode(new Rectangle(0, 0, 300, 150), new PNGEncoderOptions(), byteArray);
 					File.saveBytes(Paths.mods(modName + '/images/icons/icon-bf.png'), byteArray);
