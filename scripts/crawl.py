@@ -14,7 +14,7 @@ with sync_playwright() as p:
     b=p.chromium.launch(executable_path='/opt/pw-browsers/chromium',args=['--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader'])
     pg=b.new_page(viewport={'width':1280,'height':720}); logs=[]
     pg.on('console',lambda m: logs.append(m.text)); pg.on('pageerror',lambda e: logs.append('PAGEERROR '+str(e)[:400]))
-    pg.goto('http://localhost:8123/index.html'); time.sleep(14); pg.mouse.click(640,360)
+    pg.goto('http://localhost:8123/index.html?launch=vanilla'); time.sleep(14); pg.mouse.click(640,360)
     press(pg,'Escape',10); press(pg,'Enter',8); press(pg,'Enter',8); time.sleep(3)
     for k in plans[which]: press(pg,k,1.5 if k=='ArrowDown' else 12)
     pg.screenshot(path=f'/home/claude/psych/c_{which}.png')

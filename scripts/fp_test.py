@@ -3,7 +3,7 @@ import sys, time
 from playwright.sync_api import sync_playwright
 q=sys.argv[1]; downs=int(sys.argv[2]) if len(sys.argv)>2 else 0; wait=float(sys.argv[3]) if len(sys.argv)>3 else 25; tag=sys.argv[4] if len(sys.argv)>4 else 'fp'
 rights=int(sys.argv[5]) if len(sys.argv)>5 else 0
-URL='http://localhost:8123/index.html'
+URL='http://localhost:8123/index.html?launch=vanilla'
 def press(pg,k,w=0.8):
     pg.keyboard.down(k); time.sleep(0.15); pg.keyboard.up(k); time.sleep(w)
 with sync_playwright() as p:

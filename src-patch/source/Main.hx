@@ -176,6 +176,7 @@ class Main extends Sprite
 		try { @:privateAccess { var ks = [for (k in openfl.text.Font.__fontByName.keys()) k]; trace('FONTDBG registered=' + ks.join(',') + ' default=' + flixel.system.FlxAssets.FONT_DEFAULT + ' exists=' + openfl.utils.Assets.exists('assets/fonts/vcr.ttf', FONT) + ' name=' + (openfl.utils.Assets.exists('assets/fonts/vcr.ttf', FONT) ? openfl.utils.Assets.getFont('assets/fonts/vcr.ttf').name : 'n/a')); } } catch (e:Dynamic) { trace('FONTDBG err ' + e); }
 		js.Syntax.code("window.psychImportZip = {0}", (name:String, data:js.lib.Uint8Array) -> importZipBytes(name, data));
 		js.Syntax.code("window.psychOpenVerify = {0}", () -> { FlxG.state.openSubState(new online.substates.VerifyCodeSubstate(code -> { trace("VERIFYCODE entered: " + code); })); });
+				js.Syntax.code("window.psychLoginTest = {0}", (mail:String) -> { try { trace("LOGINRES " + online.network.FunkinNetwork.requestLogin(mail)); } catch (e:Dynamic) { trace("LOGINERR " + Std.string(e)); } });
 		js.Syntax.code("window.psychJoinTest = {0}", (addr:String) -> { trace("JOINTEST start " + addr); try { online.GameClient.createRoom(addr, e -> trace("JOINRES " + e)); trace("JOINTEST returned"); } catch (e:Dynamic) { trace("JOINTEST threw " + e); } });
 		js.Syntax.code("window.psychSetting = {0}", (k:String, v:Dynamic) -> { ClientPrefs.data.gameplaySettings.set(k, v); });
 		js.Syntax.code("window.psychDownloadMod = {0}", (url:String) -> { new online.mods.ModDownloader(url.split('/').pop().split('?')[0], url); });

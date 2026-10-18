@@ -236,11 +236,7 @@ class Paths
 			if (postfix != null)
 				songKey += '-' + postfix;
 			#if html5
-			#if MODS_ALLOWED
-			if (FileSystem.exists(modsSounds('songs', songKey)))
-				return returnSound('songs', songKey);
-			#end
-			return webSound('assets/songs/$songKey.$SOUND_EXT');
+			return webSound(webSongFile(songKey));
 			#end
 			var sound = returnSound('songs', songKey);
 			if (sound == null || sound.length <= 0)
@@ -258,11 +254,7 @@ class Paths
 	{
 		#if html5
 		var songKeyWeb:String = '${formatToSongPath(song)}/Inst' + (songSuffix ?? "");
-		#if MODS_ALLOWED
-		if (FileSystem.exists(modsSounds('songs', songKeyWeb)))
-			return (returnSound('songs', songKeyWeb) : Dynamic);
-		#end
-		return (webSound('assets/songs/$songKeyWeb.$SOUND_EXT') : Dynamic);
+		return (webSound(webSongFile(songKeyWeb)) : Dynamic);
 		#else
 		var songKey:String = '${formatToSongPath(song)}/Inst' + (songSuffix ?? "");
 		var inst = returnSound('songs', songKey);
@@ -510,7 +502,21 @@ class Paths
 	static var webModSounds:Map<String, Sound> = new Map();
 
 	/** Browser: build (and cache forever) a Sound from a file in the virtual file system. */
+	/** Browser: finds a song audio file in the mods (mp3/ogg/wav) or the base game. Returns null if there is none. */
+	public static function webSongFile(songKey:String):String {
+		#if MODS_ALLOWED
+		for (ext in ['mp3', 'ogg', 'wav']) {
+			var f = modFolders('songs/' + songKey + '.' + ext);
+			if (FileSystem.exists(f))
+				return f;
+		}
+		#end
+		var base = 'assets/songs/' + songKey + '.' + SOUND_EXT;
+		return FileSystem.exists(base) ? base : null;
+	}
+
 	public static function webSound(path:String):Sound {
+		if (path == null) return null;
 		var cached = webModSounds.get(path);
 		if (cached != null) return cached;
 		if (!FileSystem.exists(path)) return null;

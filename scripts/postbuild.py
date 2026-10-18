@@ -71,7 +71,9 @@ function __psychBoot(go0) {
 </script>
 '''
 launcher=r'''<style>
-#psych-launch{position:fixed;inset:0;z-index:99999;background:#0b0b10;color:#fff;font-family:system-ui,Segoe UI,Roboto,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+html,body{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+canvas{touch-action:none;outline:none}
+#psych-launch{touch-action:pan-y;position:fixed;inset:0;z-index:99999;background:#0b0b10;color:#fff;font-family:system-ui,Segoe UI,Roboto,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
 #psych-launch .box{max-width:560px;width:100%}
 #psych-launch h1{font-size:24px;margin:0 0 4px}
 #psych-launch p{color:#a8a8b8;margin:0 0 18px;font-size:14px}

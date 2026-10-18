@@ -3399,7 +3399,12 @@ class PlayState extends MusicBeatState
 		setOnScripts('curDecStep', curDecStep);
 		setOnScripts('curDecBeat', curDecBeat);
 
-		if (controls.PAUSE && (GameClient.isConnected() ? isReady : startedCountdown) && canPause && canInput)
+		var touchPause = false;
+		#if html5
+		// touchscreens: put three fingers down together to pause
+		touchPause = FlxG.touches.list.length >= 3;
+		#end
+		if ((controls.PAUSE || touchPause) && (GameClient.isConnected() ? isReady : startedCountdown) && canPause && canInput)
 		{
 			var ret:Dynamic = callOnScripts('onPause', null, true);
 			if(ret != FunkinLua.Function_Stop) {
@@ -5408,6 +5413,55 @@ class PlayState extends MusicBeatState
 
 	// Hold notes
 	@:unreflective
+	#if html5
+	// Touch input: each finger plays the lane whose arrow is closest to it horizontally (works with any key count).
+	var touchLanes:Map<Int, Int> = new Map();
+
+	function touchLane(x:Float):Int {
+		var best = -1;
+		var bestDist = 1e9;
+		for (i in 0...playerStrums.length) {
+			var st = playerStrums.members[i];
+			if (st == null)
+				continue;
+			var d = Math.abs(x - (st.x + st.width / 2));
+			if (d < bestDist) {
+				bestDist = d;
+				best = i;
+			}
+		}
+		return best;
+	}
+
+	function touchHeld():Array<Bool> {
+		var held = [for (_ in 0...keysArray.length) false];
+		var active:Map<Int, Bool> = new Map();
+		for (t in FlxG.touches.list) {
+			if (t.released)
+				continue;
+			active.set(t.touchPointID, true);
+			if (!touchLanes.exists(t.touchPointID)) {
+				var l = touchLane(t.screenX);
+				touchLanes.set(t.touchPointID, l);
+				if (l > -1 && strumsBlocked[l] != true)
+					keyPressed(l);
+			}
+		}
+		for (id in [for (k in touchLanes.keys()) k]) {
+			if (!active.exists(id)) {
+				var l = touchLanes.get(id);
+				touchLanes.remove(id);
+				if (l != null && l > -1)
+					keyReleased(l);
+			}
+		}
+		for (l in touchLanes)
+			if (l > -1 && l < held.length)
+				held[l] = true;
+		return held;
+	}
+	#end
+
 	private function keysCheck():Void
 	{
 		if (!checkCanInput())
@@ -5423,6 +5477,11 @@ class PlayState extends MusicBeatState
 			pressArray.push(controls.justPressed(key));
 			releaseArray.push(controls.justReleased(key));
 		}
+		#if html5
+		var touchHeldArr = touchHeld();
+		for (i in 0...holdArray.length)
+			if (touchHeldArr[i]) holdArray[i] = true;
+		#end
 
 		// TO DO: Find a better way to handle controller inputs, this should work for now
 		if(controls.controllerMode && pressArray.contains(true))

@@ -1,6 +1,6 @@
 import time
 from playwright.sync_api import sync_playwright
-URL='http://localhost:8123/index.html'
+URL='http://localhost:8123/index.html?launch=modded'
 def press(pg,k,w=0.8):
     pg.keyboard.down(k); time.sleep(0.15); pg.keyboard.up(k); time.sleep(w)
 with sync_playwright() as p:
