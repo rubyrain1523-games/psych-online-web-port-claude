@@ -177,6 +177,7 @@ class Main extends Sprite
 		js.Syntax.code("window.psychImportZip = {0}", (name:String, data:js.lib.Uint8Array) -> importZipBytes(name, data));
 		js.Syntax.code("window.psychOpenVerify = {0}", () -> { FlxG.state.openSubState(new online.substates.VerifyCodeSubstate(code -> { trace("VERIFYCODE entered: " + code); })); });
 				js.Syntax.code("window.psychLoginTest = {0}", (mail:String) -> { try { trace("LOGINRES " + online.network.FunkinNetwork.requestLogin(mail)); } catch (e:Dynamic) { trace("LOGINERR " + Std.string(e)); } });
+		js.Syntax.code("window.psychLogin = {0}", (m:String) -> { try { trace("LOGINRES " + online.network.FunkinNetwork.requestLogin(m)); } catch (e:Dynamic) { trace("LOGINEXC " + Std.string(e)); } });
 		js.Syntax.code("window.psychJoinTest = {0}", (addr:String) -> { trace("JOINTEST start " + addr); try { online.GameClient.createRoom(addr, e -> trace("JOINRES " + e)); trace("JOINTEST returned"); } catch (e:Dynamic) { trace("JOINTEST threw " + e); } });
 		js.Syntax.code("window.psychSetting = {0}", (k:String, v:Dynamic) -> { ClientPrefs.data.gameplaySettings.set(k, v); });
 		js.Syntax.code("window.psychDownloadMod = {0}", (url:String) -> { new online.mods.ModDownloader(url.split('/').pop().split('?')[0], url); });

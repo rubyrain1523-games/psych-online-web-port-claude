@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "18";
+	app.meta.h["build"] = "19";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -3604,7 +3604,7 @@ Main.onCrash = function(exc,closeGame) {
 	if(closeGame == null) {
 		closeGame = true;
 	}
-	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 444, className : "Main", methodName : "onCrash"});
+	haxe_Log.trace(" . CRASHED . ",{ fileName : "source/Main.hx", lineNumber : 445, className : "Main", methodName : "onCrash"});
 	if(exc == null) {
 		exc = new haxe_Exception("Empty Uncaught Exception");
 	}
@@ -3724,17 +3724,26 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				haxe_Log.trace("LOGINERR " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 179, className : "Main", methodName : "init"});
 			}
 		};
-		window.psychJoinTest = function(addr) {
-			haxe_Log.trace("JOINTEST start " + addr,{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
+		window.psychLogin = function(m) {
 			try {
-				online_GameClient.createRoom(addr,function(e) {
-					haxe_Log.trace("JOINRES " + e,{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
-				});
-				haxe_Log.trace("JOINTEST returned",{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
+				haxe_Log.trace("LOGINRES " + Std.string(online_network_FunkinNetwork.requestLogin(m)),{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
 			} catch( _g ) {
 				haxe_NativeStackTrace.lastError = _g;
 				var e = haxe_Exception.caught(_g).unwrap();
-				haxe_Log.trace("JOINTEST threw " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
+				haxe_Log.trace("LOGINEXC " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 180, className : "Main", methodName : "init"});
+			}
+		};
+		window.psychJoinTest = function(addr) {
+			haxe_Log.trace("JOINTEST start " + addr,{ fileName : "source/Main.hx", lineNumber : 181, className : "Main", methodName : "init"});
+			try {
+				online_GameClient.createRoom(addr,function(e) {
+					haxe_Log.trace("JOINRES " + e,{ fileName : "source/Main.hx", lineNumber : 181, className : "Main", methodName : "init"});
+				});
+				haxe_Log.trace("JOINTEST returned",{ fileName : "source/Main.hx", lineNumber : 181, className : "Main", methodName : "init"});
+			} catch( _g ) {
+				haxe_NativeStackTrace.lastError = _g;
+				var e = haxe_Exception.caught(_g).unwrap();
+				haxe_Log.trace("JOINTEST threw " + Std.string(e),{ fileName : "source/Main.hx", lineNumber : 181, className : "Main", methodName : "init"});
 			}
 		};
 		window.psychSetting = function(k,v) {
@@ -3797,7 +3806,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				online_network_FunkinNetwork.ping();
 			} catch( _g ) {
 				var exc = haxe_Exception.caught(_g);
-				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 369, className : "Main", methodName : "setupGame"});
+				haxe_Log.trace(exc,{ fileName : "source/Main.hx", lineNumber : 370, className : "Main", methodName : "setupGame"});
 			}
 		},60,function(_) {
 		});
@@ -137132,7 +137141,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 7971;
+	this.version = 346349;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -229414,7 +229423,18 @@ states_PlayState.prototype = $extend(backend_MusicBeatState.prototype,{
 		this.setOnScripts("curDecStep",this.curDecStep);
 		this.setOnScripts("curDecBeat",this.curDecBeat);
 		var touchPause = false;
-		touchPause = flixel_FlxG.touches.list.length >= 3;
+		var _g = [];
+		var _g1 = 0;
+		var _g2 = flixel_FlxG.touches.list;
+		while(_g1 < _g2.length) {
+			var t = _g2[_g1];
+			++_g1;
+			var _this = t.input;
+			if(_this.current == 1 || _this.current == 2) {
+				_g.push(t);
+			}
+		}
+		touchPause = _g.length >= 3;
 		if((this.get_controls().get_PAUSE() || touchPause) && (online_GameClient.client != null || online_GameClient.reconnecting ? this.isReady : this.startedCountdown) && this.canPause && canInput) {
 			var ret = this.callOnScripts("onPause",null,true);
 			if(ret != psychlua_FunkinLua.Function_Stop) {
@@ -257892,7 +257912,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "de5e78347c6d4bbcbc6049c2dcd28571e8f649ce";
+Main.GIT_COMMIT = "b3281c72745baf98fc41329a0fabb9ed97edd7cd";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;

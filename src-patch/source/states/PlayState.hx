@@ -3402,7 +3402,7 @@ class PlayState extends MusicBeatState
 		var touchPause = false;
 		#if html5
 		// touchscreens: put three fingers down together to pause
-		touchPause = FlxG.touches.list.length >= 3;
+		touchPause = [for (t in FlxG.touches.list) if (t.pressed) t].length >= 3;
 		#end
 		if ((controls.PAUSE || touchPause) && (GameClient.isConnected() ? isReady : startedCountdown) && canPause && canInput)
 		{
