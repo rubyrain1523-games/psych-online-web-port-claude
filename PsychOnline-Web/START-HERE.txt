@@ -1,3 +1,8 @@
+Psych Online - Web build
+1. Extract this zip.
+2. Run:  python3 serve.py   (or start-server.bat on Windows)  then open http://localhost:8000
+   (any static web server works; opening index.html directly will not work)
+Mods: Online > Mod Downloader. Downloads are saved in the browser.
 
 OFFLINE / LOCAL HTML
 - Double-click index.html (file://): pick a mode, then choose this PsychOnline-Web folder when asked. Files are read locally, nothing is uploaded. Hidden mode is not available this way.
