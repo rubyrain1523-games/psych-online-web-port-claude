@@ -97,6 +97,58 @@ canvas{touch-action:none;outline:none}
   var launch = q.get('launch');
   var panel = document.getElementById('psych-launch');
   var note = document.getElementById('psych-launch-note');
+
+  // ---- offline from a local .html (file://): redirect asset requests to a picked folder ----
+  var fileMode = location.protocol === 'file:';
+  var fileMap = null;
+  var baseDir = location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
+  function relOf(u) {
+    try {
+      var a = new URL(u, location.href).href.split('#')[0].split('?')[0];
+      if (a.indexOf(baseDir) !== 0) return null;
+      return decodeURIComponent(a.slice(baseDir.length));
+    } catch (e) { return null; }
+  }
+  function mapUrl(u) {
+    if (!fileMap || typeof u !== 'string' || u.indexOf('blob:') === 0 || u.indexOf('data:') === 0) return u;
+    var r = relOf(u);
+    return (r !== null && fileMap[r]) ? fileMap[r] : u;
+  }
+  function installFileShim(files) {
+    fileMap = {};
+    Array.prototype.forEach.call(files, function(f) {
+      var rp = (f.webkitRelativePath || f.name).split('/').slice(1).join('/');
+      if (rp) fileMap[rp] = URL.createObjectURL(f);
+    });
+    var xo = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(m, u) { arguments[1] = mapUrl(String(u)); return xo.apply(this, arguments); };
+    var fe = window.fetch;
+    window.fetch = function(u, o) { return fe.call(this, (typeof u === 'string') ? mapUrl(u) : u, o); };
+    var d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    if (d && d.set) Object.defineProperty(HTMLImageElement.prototype, 'src', { get: d.get, set: function(v) { d.set.call(this, mapUrl(String(v))); } });
+    return Object.keys(fileMap).length;
+  }
+  function pickFolder(then) {
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.webkitdirectory = true; inp.style.display = 'none';
+    inp.onchange = function() {
+      var n = installFileShim(inp.files);
+      if (!fileMap['vfs_manifest.json']) { note.textContent = 'That folder does not look right. Pick the PsychOnline-Web folder (the one containing index.html and assets).'; fileMap = null; return; }
+      note.textContent = ''; then();
+    };
+    document.body.appendChild(inp); inp.click();
+  }
+  function needFolder(then) {
+    if (!fileMode || fileMap) { then(); return; }
+    note.textContent = 'Offline mode: choose the PsychOnline-Web folder so the game can read its files (nothing is uploaded).';
+    pickFolder(then);
+  }
+  if (fileMode) {
+    Array.prototype.forEach.call(panel.querySelectorAll('button[data-hidden="1"]'), function(b) { b.style.display = 'none'; });
+    var fm = document.createElement('p'); fm.style.color = '#ffb86b';
+    fm.textContent = 'Running from a local file: you will be asked to pick this folder once per launch. Hidden mode needs the hosted link.';
+    panel.querySelector('h1').after(fm);
+  }
   function startGame(mods) {
     window.__psychModsEnabled = !!mods;
     panel.style.display = 'none';
@@ -136,11 +188,12 @@ canvas{touch-action:none;outline:none}
     w.document.close();
     note.textContent = 'Opened in a new about:blank tab. You can close this one.';
   }
+  if (!fileMode && 'serviceWorker' in navigator) { try { navigator.serviceWorker.register('./sw.js'); } catch (e) {} }
   if (launch === 'vanilla' || launch === 'modded') { startGame(launch === 'modded'); return; }
   Array.prototype.forEach.call(panel.querySelectorAll('button'), function(b) {
     b.addEventListener('click', function() {
       var mods = b.getAttribute('data-mods') === '1';
-      if (b.getAttribute('data-hidden') === '1') openHidden(mods); else startGame(mods);
+      if (b.getAttribute('data-hidden') === '1') openHidden(mods); else needFolder(function() { startGame(mods); });
     });
   });
 })();

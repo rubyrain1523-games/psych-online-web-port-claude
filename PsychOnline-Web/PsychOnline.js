@@ -925,7 +925,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "19";
+	app.meta.h["build"] = "20";
 	app.meta.h["company"] = "Snirozu";
 	app.meta.h["file"] = "PsychOnline";
 	app.meta.h["name"] = "Friday Night Funkin': Psych Online";
@@ -122662,6 +122662,7 @@ lime__$internal_backend_html5_GameDeviceData.prototype = {
 	,__class__: lime__$internal_backend_html5_GameDeviceData
 };
 var lime__$internal_backend_html5_HTML5AudioSource = function(parent) {
+	this.ids = [];
 	this.parent = parent;
 	this.id = -1;
 	this.gain = 1;
@@ -122673,6 +122674,7 @@ lime__$internal_backend_html5_HTML5AudioSource.prototype = {
 	completed: null
 	,gain: null
 	,id: null
+	,ids: null
 	,length: null
 	,loops: null
 	,parent: null
@@ -122691,7 +122693,16 @@ lime__$internal_backend_html5_HTML5AudioSource.prototype = {
 		this.completed = false;
 		var cacheVolume = this.parent.buffer.__srcHowl._volume;
 		this.parent.buffer.__srcHowl._volume = this.parent.get_gain();
+		var _g = 0;
+		var _g1 = this.ids;
+		while(_g < _g1.length) {
+			var old = _g1[_g];
+			++_g;
+			this.parent.buffer.__srcHowl.stop(old);
+		}
+		this.ids = [];
 		this.id = this.parent.buffer.__srcHowl.play();
+		this.ids.push(this.id);
 		this.parent.buffer.__srcHowl._volume = cacheVolume;
 		this.setPosition(this.parent.get_position());
 		this.parent.buffer.__srcHowl.on("end",$bind(this,this.howl_onEnd),this.id);
@@ -122700,14 +122711,27 @@ lime__$internal_backend_html5_HTML5AudioSource.prototype = {
 	,pause: function() {
 		this.playing = false;
 		if(this.parent.buffer != null && this.parent.buffer.__srcHowl != null) {
-			this.parent.buffer.__srcHowl.pause(this.id);
+			var _g = 0;
+			var _g1 = this.ids;
+			while(_g < _g1.length) {
+				var i = _g1[_g];
+				++_g;
+				this.parent.buffer.__srcHowl.pause(i);
+			}
 		}
 	}
 	,stop: function() {
 		this.playing = false;
 		if(this.parent.buffer != null && this.parent.buffer.__srcHowl != null) {
-			this.parent.buffer.__srcHowl.stop(this.id);
-			this.parent.buffer.__srcHowl.off("end",$bind(this,this.howl_onEnd),this.id);
+			var _g = 0;
+			var _g1 = this.ids;
+			while(_g < _g1.length) {
+				var i = _g1[_g];
+				++_g;
+				this.parent.buffer.__srcHowl.stop(i);
+				this.parent.buffer.__srcHowl.off("end",$bind(this,this.howl_onEnd),i);
+			}
+			this.ids = [];
 		}
 	}
 	,howl_onEnd: function() {
@@ -137141,7 +137165,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 346349;
+	this.version = 160566;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -257912,7 +257936,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 Main.PSYCH_ONLINE_VERSION = null;
 Main.CLIENT_PROTOCOL = 11;
 Main.NETWORK_PROTOCOL = 8;
-Main.GIT_COMMIT = "b3281c72745baf98fc41329a0fabb9ed97edd7cd";
+Main.GIT_COMMIT = "4e747e220f2a662ddb368d8f265f991b80e2da97";
 Main.LOW_STORAGE = false;
 Main.UNOFFICIAL_BUILD = false;
 Main.wankyUpdate = null;
