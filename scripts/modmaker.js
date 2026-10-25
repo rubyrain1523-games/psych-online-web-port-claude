@@ -104,6 +104,12 @@
       '<div class="pane" id="mm-out"><div class="grid"><label>Mod description<input id="mm-desc" value="Made with the in-game Mod Maker"></label></div>' +
         '<div class="row"><button class="b" id="mm-dl">Download mod zip</button><button class="b" id="mm-inst-btn">Install into the game now</button></div><div class="note" id="mm-msg"></div></div>';
     document.body.appendChild(root);
+    // freeze the game underneath: pause its frame loop and audio, and keep key presses away from it
+    var origRaf = window.requestAnimationFrame, held = [], howlSusp = false;
+    function raf(fn) { return origRaf.call(window, fn); }
+    window.requestAnimationFrame = function(cb) { held.push(cb); return held.length; };
+    try { if (window.Howler && Howler.ctx && Howler.ctx.state === 'running') { Howler.ctx.suspend(); howlSusp = true; } } catch (e) {}
+    ['keydown', 'keyup', 'keypress'].forEach(function(t) { root.addEventListener(t, function(e) { e.stopPropagation(); }); });
     var $ = function(i) { return root.querySelector('#' + i); };
     st = { notes: {}, dur: 0, audio: null, url: null, instFile: null, vocFile: null, undo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, samp: {}, tr: 'bf', mplay: null };
     ['mm-pl', 'mm-opp', 'mm-gf', 'mm-stage'].forEach(function(id) { $(id).onchange = function() { $(id + '-c').style.display = this.value === '__c' ? '' : 'none'; }; });
@@ -118,7 +124,9 @@
       if (t === 'chart') layout(); if (t === 'music') pdraw();
     }
     Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(b) { b.onclick = function() { show(b.getAttribute('data-t')); }; });
-    function close() { if (st.audio) st.audio.pause(); if (st.mplay) st.mplay.pause(); window.removeEventListener('resize', layout); document.removeEventListener('keydown', keys); root.remove(); style.remove(); st = null; }
+    function close() { if (st.audio) st.audio.pause(); if (st.mplay) st.mplay.pause(); window.removeEventListener('resize', layout); document.removeEventListener('keydown', keys, true); root.remove(); style.remove(); st = null;
+      window.requestAnimationFrame = origRaf; held.splice(0).forEach(function(cb) { origRaf.call(window, cb); });
+      try { if (howlSusp) Howler.ctx.resume(); } catch (e) {} }
     $('mm-close').onclick = function() { if (confirm('Close the Mod Maker? Unsaved work will be lost.')) close(); };
     function bpm() { return Math.max(40, parseFloat($('mm-bpm').value) || 120); }
     function stepMs() { return 60000 / bpm() / 4; }
@@ -167,7 +175,7 @@
       $('mm-info').textContent = Object.keys(st.notes).length + ' notes, ' + st.dur.toFixed(1) + 's';
     }
     function snapshot() { st.undo.push(JSON.stringify(st.notes)); if (st.undo.length > 60) st.undo.shift(); }
-    ed.addEventListener('scroll', function() { requestAnimationFrame(draw); });
+    ed.addEventListener('scroll', function() { raf(draw); });
     $('mm-bpm').onchange = function() { layout(); pdraw(); }; $('mm-snap').onchange = layout; $('mm-zoom').onchange = layout;
     window.addEventListener('resize', layout);
     function togglePlay() {
@@ -176,7 +184,7 @@
       if (st.audio.paused) {
         st.audio.currentTime = Math.max(0, ed.scrollTop / SH * stepMs() / 1000);
         st.audio.play(); btn.textContent = 'Pause';
-        (function tick() { if (!st || st.audio.paused) { if (st) btn.textContent = 'Play'; return; } ed.scrollTop = Math.max(0, (st.audio.currentTime * 1000 / stepMs()) * SH - cv.height / 2); draw(); requestAnimationFrame(tick); })();
+        (function tick() { if (!st || st.audio.paused) { if (st) btn.textContent = 'Play'; return; } ed.scrollTop = Math.max(0, (st.audio.currentTime * 1000 / stepMs()) * SH - cv.height / 2); draw(); raf(tick); })();
       } else { st.audio.pause(); btn.textContent = 'Play'; }
     }
     $('mm-play').onclick = togglePlay;
@@ -187,7 +195,7 @@
       if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
     }
-    document.addEventListener('keydown', keys);
+    document.addEventListener('keydown', keys, true);
     $('mm-clear').onclick = function() { if (confirm('Remove all notes?')) { snapshot(); st.notes = {}; draw(); } };
     $('mm-beats').onclick = function() { snapshot(); var n = Math.floor(st.dur * 1000 / (stepMs() * 4)); for (var b = 4; b < n; b++) st.notes[(b * 4) + '_' + (4 + (b % 4))] = 0; draw(); };
     var drag = null;
