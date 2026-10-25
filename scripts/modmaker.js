@@ -1,223 +1,408 @@
 (function() {
-  // ---------- tiny store-only zip writer ----------
+  // ---------- zip / wav helpers ----------
   var crcT = (function() { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u) { var c = 0xFFFFFFFF; for (var i = 0; i < u.length; i++) c = crcT[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
   function makeZip(files) {
     var enc = new TextEncoder(), parts = [], central = [], off = 0;
     files.forEach(function(f) {
       var nm = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30));
-      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
-      h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true);
-      h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true);
+      h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, nm.length, true);
       parts.push(new Uint8Array(h.buffer), nm, f.data);
       var c = new DataView(new ArrayBuffer(46));
-      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
-      c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true);
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true);
       c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
       central.push(new Uint8Array(c.buffer), nm);
       off += 30 + nm.length + f.data.length;
     });
-    var csize = 0; central.forEach(function(x) { csize += x.length; });
+    var cs = 0; central.forEach(function(x) { cs += x.length; });
     var e = new DataView(new ArrayBuffer(22));
-    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
-    e.setUint32(12, csize, true); e.setUint32(16, off, true);
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
     return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), { type: 'application/zip' });
   }
+  function wavBlob(buf) {
+    var d = buf.getChannelData(0), n = d.length, o = new DataView(new ArrayBuffer(44 + n * 2)), sr = buf.sampleRate;
+    function s(p, t) { for (var i = 0; i < t.length; i++) o.setUint8(p + i, t.charCodeAt(i)); }
+    s(0, 'RIFF'); o.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); o.setUint32(16, 16, true); o.setUint16(20, 1, true); o.setUint16(22, 1, true);
+    o.setUint32(24, sr, true); o.setUint32(28, sr * 2, true); o.setUint16(32, 2, true); o.setUint16(34, 16, true); s(36, 'data'); o.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) o.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+    return new Blob([o], { type: 'audio/wav' });
+  }
   function slug(s) { return (s || '').trim().replace(/[^A-Za-z0-9 _-]/g, '').replace(/\s+/g, '-').toLowerCase(); }
-  function bytes(file) { return file.arrayBuffer().then(function(b) { return new Uint8Array(b); }); }
-  function ext(f) { var m = /\.([A-Za-z0-9]+)$/.exec(f.name); return m ? m[1].toLowerCase() : ''; }
+  function bytes(f) { return f.arrayBuffer().then(function(b) { return new Uint8Array(b); }); }
+  function ext(f) { var m = /\.([A-Za-z0-9]+)$/.exec(f.name || ''); return m ? m[1].toLowerCase() : 'wav'; }
+  function hex2rgb(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
 
-  var STEP_H = 20, LANES = 8, LANE_W = 46, GUTTER = 56;
-  var CSS = '#mm{position:fixed;inset:0;z-index:100000;background:#0b0b10;color:#fff;font:14px system-ui,sans-serif;display:flex;flex-direction:column;touch-action:pan-y;-webkit-user-select:text;user-select:text}' +
-    '#mm *{box-sizing:border-box}#mm .bar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#16161f;border-bottom:1px solid #33334a;flex-wrap:wrap}' +
+  var PLAYERS = ['bf', 'bf-car', 'bf-christmas', 'bf-pixel', 'pico-player', 'bf-holding-gf'];
+  var OPPS = ['dad', 'spooky', 'pico', 'mom', 'mom-car', 'parents-christmas', 'monster', 'monster-christmas', 'senpai', 'senpai-angry', 'spirit', 'tankman', 'gf', 'bf'];
+  var GFS = ['gf', 'gf-car', 'gf-christmas', 'gf-pixel', 'gf-tankmen', 'pico-speaker', 'none'];
+  var STAGES = ['stage', 'spooky', 'philly', 'limo', 'mall', 'mallEvil', 'school', 'schoolEvil', 'tank'];
+  var DIFFS = [['Normal', ''], ['Easy', '-easy'], ['Hard', '-hard']];
+  var CELL = 22, ROWH = 16, LANES = 8, LANE_W = 46, GUTTER = 56;
+  var NOTEN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  var TRACKS = [['bf', 'Boyfriend voice'], ['opp', 'Opponent voice'], ['lead', 'Lead'], ['bass', 'Bass'], ['drums', 'Drums']];
+  var TCOL = { bf: '#00c8ff', opp: '#c24b99', lead: '#ffd24b', bass: '#6bff8a', drums: '#ff7b6b' };
+
+  var CSS = '#mm{position:fixed;inset:0;z-index:100000;background:#0b0b10;color:#fff;font:14px system-ui,sans-serif;display:flex;flex-direction:column;-webkit-user-select:text;user-select:text}' +
+    '#mm *{box-sizing:border-box}#mm .bar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#16161f;border-bottom:1px solid #33334a;flex-wrap:wrap;flex:none}' +
     '#mm .tabs button,#mm button.b{display:inline-block;width:auto;margin:0;padding:7px 12px;border-radius:8px;border:1px solid #33334a;background:#1d1d2b;color:#fff;cursor:pointer;font-size:14px}' +
-    '#mm .tabs button.on{border-color:#7b6cff;background:#2a2550}#mm input,#mm select{background:#0f0f17;color:#fff;border:1px solid #33334a;border-radius:6px;padding:6px 8px;font-size:14px;max-width:100%}' +
-    '#mm label{display:flex;flex-direction:column;font-size:12px;color:#a8a8b8;gap:3px}#mm .pane{flex:1;overflow:auto;padding:12px;display:none}#mm .pane.on{display:block}' +
-    '#mm .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:12px}' +
+    '#mm .tabs button.on,#mm button.b.on{border-color:#7b6cff;background:#2a2550}#mm input,#mm select{background:#0f0f17;color:#fff;border:1px solid #33334a;border-radius:6px;padding:6px 8px;font-size:14px;max-width:100%;width:100%}' +
+    '#mm input[type=color]{padding:0;height:32px}#mm input[type=file]{padding:4px}#mm input[type=checkbox]{width:auto}' +
+    '#mm label{display:flex;flex-direction:column;font-size:12px;color:#a8a8b8;gap:3px;min-width:0}#mm .pane{flex:1;overflow:auto;padding:12px;display:none;min-height:0}#mm .pane.on{display:block}' +
+    '#mm h3{margin:14px 0 8px;font-size:13px;color:#a8a8b8;text-transform:uppercase;letter-spacing:.06em}#mm h3:first-child{margin-top:0}' +
+    '#mm .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:10px}' +
     '#mm .note{color:#ffb86b;font-size:13px;margin:6px 0}#mm table{border-collapse:collapse;width:100%}#mm td{padding:4px;border-bottom:1px solid #222}' +
-    '#mm .ed{position:relative;overflow:auto;background:#0f0f17}#mm .ed canvas{position:sticky;top:0;left:0;display:block;touch-action:none}';
+    '#mm .ed{position:relative;overflow:auto;background:#0f0f17;border:1px solid #33334a;border-radius:8px}#mm canvas{display:block;touch-action:none}' +
+    '#mm .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}#mm .info{color:#a8a8b8;font-size:13px}';
   var st = null;
+
+  function sel(id, label, list, val) {
+    return '<label>' + label + '<select id="' + id + '">' + list.map(function(x) { return '<option>' + x + '</option>'; }).join('') + '<option value="__c">Custom…</option></select><input id="' + id + '-c" placeholder="custom name" style="display:none"></label>';
+  }
 
   function open() {
     if (document.getElementById('mm')) return;
     var style = document.createElement('style'); style.id = 'mm-style'; style.textContent = CSS; document.head.appendChild(style);
     var root = document.createElement('div'); root.id = 'mm';
     root.innerHTML =
-      '<div class="bar"><b>Mod Maker</b><span class="tabs"><button data-t="song" class="on">Song</button> <button data-t="skin">Re-skin / Assets</button> <button data-t="out">Save</button></span>' +
-      '<span style="flex:1"></span><button class="b" id="mm-close">Close</button></div>' +
-      '<div class="pane on" id="mm-song">' +
-        '<div class="grid">' +
-          '<label>Mod / song name<input id="mm-name" value="My Song"></label>' +
-          '<label>BPM<input id="mm-bpm" type="number" value="120" min="40" max="300"></label>' +
-          '<label>Scroll speed<input id="mm-speed" type="number" value="2" step="0.1" min="0.5" max="5"></label>' +
-          '<label>Opponent<input id="mm-opp" value="dad"></label>' +
-          '<label>Player<input id="mm-pl" value="bf"></label>' +
-          '<label>Girlfriend<input id="mm-gf" value="gf"></label>' +
-          '<label>Stage<input id="mm-stage" value="stage"></label>' +
-          '<label>Instrumental (mp3/ogg/wav)<input id="mm-inst" type="file" accept="audio/*"></label>' +
-          '<label>Vocals (optional)<input id="mm-voc" type="file" accept="audio/*"></label>' +
-        '</div>' +
-        '<div class="note">Chart: click a lane to add a note, click it again to remove, drag down to make a hold. The right 4 lanes are yours (player), the left 4 are the opponent\'s. Pick the instrumental first.</div>' +
-        '<div class="bar" style="border:1px solid #33334a;border-radius:8px"><button class="b" id="mm-play">Play</button><label>Snap<select id="mm-snap"><option value="4">1/4 beat</option><option value="2" selected>1/2 beat</option><option value="1">1 beat</option></select></label>' +
-          '<button class="b" id="mm-beats">Fill every beat</button><button class="b" id="mm-clear">Clear notes</button><span id="mm-info" style="color:#a8a8b8"></span></div>' +
-        '<div class="ed" id="mm-ed" style="height:55vh;margin-top:8px"><canvas id="mm-cv"></canvas><div id="mm-sp"></div></div>' +
-      '</div>' +
-      '<div class="pane" id="mm-skin"><div class="note">Replace or add game files. Choose a file, then where it goes inside the mod (for sprite sheets upload the .png and its .xml with the same name). Examples: images/menuBG.png, images/NOTE_assets.png, images/characters/BOYFRIEND.png.</div>' +
+      '<div class="bar"><b>Mod Maker</b><span class="tabs"><button data-t="song" class="on">1 Song</button> <button data-t="music">2 Music</button> <button data-t="chart">3 Chart</button> <button data-t="skin">4 Assets</button> <button data-t="out">5 Save</button></span><span style="flex:1"></span><button class="b" id="mm-close">Close</button></div>' +
+
+      '<div class="pane on" id="mm-song"><h3>Song</h3><div class="grid">' +
+        '<label>Song name<input id="mm-name" value="My Song"></label>' +
+        '<label>BPM<input id="mm-bpm" type="number" value="120" min="40" max="300"></label>' +
+        '<label>Scroll speed<input id="mm-speed" type="number" value="2" step="0.1" min="0.5" max="5"></label>' +
+        '<label>Difficulty<select id="mm-diff">' + DIFFS.map(function(d, i) { return '<option value="' + i + '">' + d[0] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Menu color<input id="mm-color" type="color" value="#9271fd"></label></div>' +
+      '<h3>Characters</h3><div class="grid">' + sel('mm-pl', 'Player', PLAYERS) + sel('mm-opp', 'Opponent', OPPS) + sel('mm-gf', 'Girlfriend', GFS) + sel('mm-stage', 'Stage', STAGES) + '</div>' +
+      '<h3>Audio</h3><div class="grid"><label>Instrumental (mp3/ogg/wav)<input id="mm-inst" type="file" accept="audio/*"></label><label>Vocals (optional)<input id="mm-voc" type="file" accept="audio/*"></label></div>' +
+      '<div class="info" id="mm-audioinfo">No audio picked. You can also build the music yourself in the Music tab.</div></div>' +
+
+      '<div class="pane" id="mm-music"><div class="note">Build a song with a piano roll: tracks for Boyfriend\'s voice, the opponent\'s voice, lead, bass and drums. "Use in song" renders the music (instrumental) and the two voices (vocals) into the Song tab. "Chart from voices" makes notes from the two voice tracks automatically.</div>' +
+        '<div class="row" id="mm-tr"></div>' +
+        '<div class="row"><label>Bars<select id="mm-bars"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option><option>32</option></select></label><label>Note length<select id="mm-nlen"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option></select></label>' +
+          '<button class="b" id="mm-mplay">Render &amp; play</button><button class="b" id="mm-use">Use in song</button><button class="b" id="mm-gen">Chart from voices</button><button class="b" id="mm-mclr">Clear track</button><label>Import MIDI<input id="mm-midi" type="file" accept=".mid,.midi"></label></div>' +
+        '<div class="info" id="mm-minfo">Click to add a note, click it again to remove. Uses the BPM from the Song tab.</div><div id="mm-midimap"></div>' +
+        '<div class="ed" id="mm-ped" style="height:' + (24 * ROWH + 4) + 'px;max-height:60vh"><canvas id="mm-pcv"></canvas></div></div>' +
+
+      '<div class="pane" id="mm-chart"><div class="row"><button class="b" id="mm-play">Play</button><label>Snap<select id="mm-snap"><option value="4">1/4 beat</option><option value="2" selected>1/2 beat</option><option value="1">1 beat</option></select></label>' +
+        '<label>Zoom<select id="mm-zoom"><option value="14">Small</option><option value="20" selected>Medium</option><option value="30">Large</option></select></label>' +
+        '<button class="b" id="mm-undo">Undo</button><button class="b" id="mm-beats">Fill every beat</button><button class="b" id="mm-clear">Clear notes</button><span class="info" id="mm-info"></span></div>' +
+        '<div class="note">Click a lane to add a note, click again to remove, drag down for a hold. Right 4 lanes = you (player), left 4 = opponent. Space = play/pause, Ctrl+Z = undo.</div>' +
+        '<div class="ed" id="mm-ed" style="height:calc(100vh - 260px);min-height:300px"><canvas id="mm-cv"></canvas><div id="mm-sp"></div></div></div>' +
+
+      '<div class="pane" id="mm-skin"><div class="note">Replace or add game files. Choose a file, then where it goes inside the mod (for sprite sheets add the .png and its .xml). Examples: images/menuBG.png, images/NOTE_assets.png, images/characters/BOYFRIEND.png.</div>' +
         '<datalist id="mm-targets"><option value="images/menuBG.png"><option value="images/menuDesat.png"><option value="images/NOTE_assets.png"><option value="images/NOTE_assets.xml"><option value="images/characters/BOYFRIEND.png"><option value="images/characters/BOYFRIEND.xml"><option value="images/gfDanceTitle.png"><option value="images/logoBumpin.png"><option value="sounds/scrollMenu.ogg"><option value="music/freakyMenu.ogg"></datalist>' +
         '<table id="mm-rows"></table><button class="b" id="mm-addrow" style="margin-top:8px">+ Add file</button></div>' +
-      '<div class="pane" id="mm-out"><div class="grid"><label>Description<input id="mm-desc" value="Made with the in-game Mod Maker"></label></div>' +
-        '<button class="b" id="mm-dl">Download mod zip</button> <button class="b" id="mm-inst-btn">Install into the game now</button><div class="note" id="mm-msg"></div></div>';
+
+      '<div class="pane" id="mm-out"><div class="grid"><label>Mod description<input id="mm-desc" value="Made with the in-game Mod Maker"></label></div>' +
+        '<div class="row"><button class="b" id="mm-dl">Download mod zip</button><button class="b" id="mm-inst-btn">Install into the game now</button></div><div class="note" id="mm-msg"></div></div>';
     document.body.appendChild(root);
     var $ = function(i) { return root.querySelector('#' + i); };
-    st = { notes: {}, dur: 0, audio: null, url: null };
+    st = { notes: {}, dur: 0, audio: null, url: null, instFile: null, vocFile: null, undo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, tr: 'bf', mplay: null };
+    ['mm-pl', 'mm-opp', 'mm-gf', 'mm-stage'].forEach(function(id) { $(id).onchange = function() { $(id + '-c').style.display = this.value === '__c' ? '' : 'none'; }; });
+    function val(id) { var s = $(id).value; return s === '__c' ? ($(id + '-c').value.trim() || 'bf') : s; }
+    $('mm-pl').value = 'bf'; $('mm-opp').value = 'dad'; $('mm-gf').value = 'gf'; $('mm-stage').value = 'stage';
 
-    Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(b) {
-      b.onclick = function() {
-        Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(x) { x.classList.toggle('on', x === b); });
-        ['song', 'skin', 'out'].forEach(function(t) { $('mm-' + t).classList.toggle('on', t === b.getAttribute('data-t')); });
-        if (b.getAttribute('data-t') === 'song') layout();
-      };
-    });
-    function close() { if (st.audio) st.audio.pause(); window.removeEventListener('resize', layout); root.remove(); style.remove(); st = null; }
-    $('mm-close').onclick = function() { if (Object.keys(st.notes).length === 0 || confirm('Close the Mod Maker? Unsaved work will be lost.')) close(); };
-
-    var ed = $('mm-ed'), cv = $('mm-cv'), sp = $('mm-sp'), ctx = cv.getContext('2d');
+    var cur = 'song';
+    function show(t) {
+      cur = t;
+      Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(x) { x.classList.toggle('on', x.getAttribute('data-t') === t); });
+      ['song', 'music', 'chart', 'skin', 'out'].forEach(function(n) { $('mm-' + n).classList.toggle('on', n === t); });
+      if (t === 'chart') layout(); if (t === 'music') pdraw();
+    }
+    Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(b) { b.onclick = function() { show(b.getAttribute('data-t')); }; });
+    function close() { if (st.audio) st.audio.pause(); if (st.mplay) st.mplay.pause(); window.removeEventListener('resize', layout); document.removeEventListener('keydown', keys); root.remove(); style.remove(); st = null; }
+    $('mm-close').onclick = function() { if (confirm('Close the Mod Maker? Unsaved work will be lost.')) close(); };
     function bpm() { return Math.max(40, parseFloat($('mm-bpm').value) || 120); }
     function stepMs() { return 60000 / bpm() / 4; }
+
+    // ---------- audio picking ----------
+    function setAudio(f) {
+      if (st.url) URL.revokeObjectURL(st.url);
+      st.url = URL.createObjectURL(f); st.audio = new Audio(st.url);
+      st.audio.onloadedmetadata = function() { st.dur = st.audio.duration || 0; $('mm-audioinfo').textContent = 'Instrumental: ' + (f.name || 'rendered music') + ' (' + st.dur.toFixed(1) + 's)' + (st.vocFile ? ', vocals: ' + (st.vocFile.name || 'rendered voices') : ''); layout(); };
+    }
+    $('mm-inst').onchange = function() { var f = this.files[0]; if (!f) return; st.instFile = f; setAudio(f); if ($('mm-name').value === 'My Song') $('mm-name').value = f.name.replace(/\.[^.]+$/, ''); };
+    $('mm-voc').onchange = function() { st.vocFile = this.files[0] || null; };
+
+    // ---------- chart editor ----------
+    var ed = $('mm-ed'), cv = $('mm-cv'), sp = $('mm-sp'), ctx = cv.getContext('2d'), SH = 20;
     function totalSteps() { return Math.max(64, Math.ceil(st.dur * 1000 / stepMs()) + 16); }
     function layout() {
-      if (!st || !ed.clientWidth) return;
+      if (!st || cur !== 'chart' || !ed.clientWidth) return;
+      SH = parseInt($('mm-zoom').value);
       cv.width = Math.max(ed.clientWidth, GUTTER + LANES * LANE_W + 10); cv.height = ed.clientHeight;
-      sp.style.height = (totalSteps() * STEP_H) + 'px'; sp.style.width = '1px'; sp.style.marginTop = (-cv.height) + 'px';
+      sp.style.height = (totalSteps() * SH) + 'px'; sp.style.width = '1px'; sp.style.marginTop = (-cv.height) + 'px';
+      cv.style.position = 'sticky'; cv.style.top = '0'; cv.style.left = '0';
       draw();
     }
     function draw() {
-      if (!st || !cv.width) return;
+      if (!st || cur !== 'chart' || !cv.width) return;
       var top = ed.scrollTop, h = cv.height, c = ctx;
       c.fillStyle = '#0f0f17'; c.fillRect(0, 0, cv.width, h);
-      var s0 = Math.floor(top / STEP_H), s1 = Math.ceil((top + h) / STEP_H);
+      var s0 = Math.floor(top / SH), s1 = Math.ceil((top + h) / SH);
       for (var s = s0; s <= s1; s++) {
-        var y = s * STEP_H - top;
+        var y = s * SH - top;
         c.strokeStyle = s % 16 === 0 ? '#7b6cff' : s % 4 === 0 ? '#3a3a55' : '#1a1a28'; c.beginPath(); c.moveTo(GUTTER, y); c.lineTo(GUTTER + LANES * LANE_W, y); c.stroke();
         if (s % 4 === 0) { c.fillStyle = '#8a8aa0'; c.font = '11px system-ui'; c.fillText((s * stepMs() / 1000).toFixed(1) + 's', 4, y + 12); }
       }
       for (var l = 0; l <= LANES; l++) { c.strokeStyle = l === 4 ? '#7b6cff' : '#2a2a3a'; c.beginPath(); c.moveTo(GUTTER + l * LANE_W, 0); c.lineTo(GUTTER + l * LANE_W, h); c.stroke(); }
+      c.fillStyle = '#6a6a80'; c.font = '11px system-ui'; c.fillText('OPPONENT', GUTTER + 4, h - 6); c.fillText('PLAYER', GUTTER + 4 * LANE_W + 4, h - 6);
       var cols = ['#c24b99', '#00ffff', '#12fa05', '#f9393f'];
       Object.keys(st.notes).forEach(function(k) {
-        var p = k.split('_'), s = +p[0], l = +p[1], len = st.notes[k], y = s * STEP_H - top;
-        if (y < -STEP_H * (len + 1) || y > h) return;
+        var p = k.split('_'), s = +p[0], l = +p[1], len = st.notes[k], y = s * SH - top;
+        if (y < -SH * (len + 1) || y > h) return;
         c.fillStyle = cols[l % 4];
-        if (len > 0) { c.globalAlpha = .5; c.fillRect(GUTTER + l * LANE_W + LANE_W / 2 - 5, y + STEP_H / 2, 10, len * STEP_H); c.globalAlpha = 1; }
-        c.fillRect(GUTTER + l * LANE_W + 3, y + 1, LANE_W - 6, STEP_H - 2);
+        if (len > 0) { c.globalAlpha = .5; c.fillRect(GUTTER + l * LANE_W + LANE_W / 2 - 5, y + SH / 2, 10, len * SH); c.globalAlpha = 1; }
+        c.fillRect(GUTTER + l * LANE_W + 3, y + 1, LANE_W - 6, SH - 2);
       });
-      if (st.audio) { var py = (st.audio.currentTime * 1000 / stepMs()) * STEP_H - top; c.strokeStyle = '#fff'; c.beginPath(); c.moveTo(GUTTER - 6, py); c.lineTo(GUTTER + LANES * LANE_W + 6, py); c.stroke(); }
+      if (st.audio) { var py = (st.audio.currentTime * 1000 / stepMs()) * SH - top; c.strokeStyle = '#fff'; c.beginPath(); c.moveTo(GUTTER - 6, py); c.lineTo(GUTTER + LANES * LANE_W + 6, py); c.stroke(); }
       $('mm-info').textContent = Object.keys(st.notes).length + ' notes, ' + st.dur.toFixed(1) + 's';
     }
+    function snapshot() { st.undo.push(JSON.stringify(st.notes)); if (st.undo.length > 60) st.undo.shift(); }
     ed.addEventListener('scroll', function() { requestAnimationFrame(draw); });
-    $('mm-bpm').onchange = layout; $('mm-snap').onchange = layout;
+    $('mm-bpm').onchange = function() { layout(); pdraw(); }; $('mm-snap').onchange = layout; $('mm-zoom').onchange = layout;
     window.addEventListener('resize', layout);
-    $('mm-inst').onchange = function() {
-      var f = this.files[0]; if (!f) return;
-      if (st.url) URL.revokeObjectURL(st.url);
-      st.url = URL.createObjectURL(f); st.audio = new Audio(st.url);
-      st.audio.onloadedmetadata = function() { st.dur = st.audio.duration || 0; layout(); };
-      if ($('mm-name').value === 'My Song') $('mm-name').value = f.name.replace(/\.[^.]+$/, '');
-    };
-    $('mm-play').onclick = function() {
-      var btn = this;
-      if (!st.audio) { alert('Pick an instrumental first.'); return; }
+    function togglePlay() {
+      var btn = $('mm-play');
+      if (!st.audio) { alert('Add an instrumental first (Song tab) or use the Music tab.'); return; }
       if (st.audio.paused) {
-        st.audio.currentTime = Math.max(0, ed.scrollTop / STEP_H * stepMs() / 1000);
+        st.audio.currentTime = Math.max(0, ed.scrollTop / SH * stepMs() / 1000);
         st.audio.play(); btn.textContent = 'Pause';
-        (function tick() { if (!st || st.audio.paused) { btn.textContent = 'Play'; return; } ed.scrollTop = Math.max(0, (st.audio.currentTime * 1000 / stepMs()) * STEP_H - cv.height / 2); draw(); requestAnimationFrame(tick); })();
+        (function tick() { if (!st || st.audio.paused) { if (st) btn.textContent = 'Play'; return; } ed.scrollTop = Math.max(0, (st.audio.currentTime * 1000 / stepMs()) * SH - cv.height / 2); draw(); requestAnimationFrame(tick); })();
       } else { st.audio.pause(); btn.textContent = 'Play'; }
-    };
-    $('mm-clear').onclick = function() { if (confirm('Remove all notes?')) { st.notes = {}; draw(); } };
-    $('mm-beats').onclick = function() {
-      var n = Math.floor(st.dur * 1000 / (stepMs() * 4));
-      for (var b = 4; b < n; b++) st.notes[(b * 4) + '_' + (4 + (b % 4))] = 0;
-      draw();
-    };
+    }
+    $('mm-play').onclick = togglePlay;
+    function undo() { if (st.undo.length) { st.notes = JSON.parse(st.undo.pop()); draw(); } }
+    $('mm-undo').onclick = undo;
+    function keys(e) {
+      if (!st || cur !== 'chart' || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+    }
+    document.addEventListener('keydown', keys);
+    $('mm-clear').onclick = function() { if (confirm('Remove all notes?')) { snapshot(); st.notes = {}; draw(); } };
+    $('mm-beats').onclick = function() { snapshot(); var n = Math.floor(st.dur * 1000 / (stepMs() * 4)); for (var b = 4; b < n; b++) st.notes[(b * 4) + '_' + (4 + (b % 4))] = 0; draw(); };
     var drag = null;
     function pos(e) {
-      var r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top + ed.scrollTop;
-      var per = 4 / parseInt($('mm-snap').value);
-      var s = Math.floor(y / STEP_H / per) * per, l = Math.floor((x - GUTTER) / LANE_W);
-      return (l < 0 || l >= LANES || s < 0) ? null : { s: s, l: l, raw: Math.floor(y / STEP_H) };
+      var r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top + ed.scrollTop, per = 4 / parseInt($('mm-snap').value);
+      var s = Math.floor(y / SH / per) * per, l = Math.floor((x - GUTTER) / LANE_W);
+      return (l < 0 || l >= LANES || s < 0) ? null : { s: s, l: l, raw: Math.floor(y / SH) };
     }
     cv.addEventListener('pointerdown', function(e) {
-      var p = pos(e); if (!p) return; e.preventDefault();
+      var p = pos(e); if (!p) return; e.preventDefault(); snapshot();
       var k = p.s + '_' + p.l;
       if (st.notes[k] !== undefined) { delete st.notes[k]; draw(); return; }
       st.notes[k] = 0; drag = { k: k, s: p.s }; cv.setPointerCapture(e.pointerId); draw();
     });
-    cv.addEventListener('pointermove', function(e) {
-      if (!drag) return; var p = pos(e) || { raw: drag.s };
-      st.notes[drag.k] = Math.max(0, p.raw - drag.s); draw();
-    });
+    cv.addEventListener('pointermove', function(e) { if (!drag) return; var p = pos(e) || { raw: drag.s }; st.notes[drag.k] = Math.max(0, p.raw - drag.s); draw(); });
     cv.addEventListener('pointerup', function() { drag = null; });
 
-    var rows = [];
+    // ---------- music maker ----------
+    var pcv = $('mm-pcv'), pctx = pcv.getContext('2d'), ped = $('mm-ped');
+    function bars() { return parseInt($('mm-bars').value); }
+    function rows(tr) { return tr === 'drums' ? 3 : 24; }
+    function mkTracks() {
+      var h = $('mm-tr'); h.innerHTML = '';
+      TRACKS.forEach(function(t) {
+        var b = document.createElement('button'); b.className = 'b' + (st.tr === t[0] ? ' on' : ''); b.textContent = t[1]; b.style.borderColor = TCOL[t[0]];
+        b.onclick = function() { st.tr = t[0]; mkTracks(); pdraw(); }; h.appendChild(b);
+      });
+    }
+    mkTracks();
+    function pdraw() {
+      if (!st || cur !== 'music') return;
+      var n = bars() * 16, R = rows(st.tr), c = pctx;
+      pcv.width = GUTTER + n * CELL; pcv.height = R * ROWH;
+      c.fillStyle = '#0f0f17'; c.fillRect(0, 0, pcv.width, pcv.height);
+      for (var r = 0; r < R; r++) {
+        var y = r * ROWH, pitch = R === 24 ? 71 - r : 0, nm = R === 24 ? NOTEN[pitch % 12] : ['Hat', 'Snare', 'Kick'][r];
+        if (R === 24 && nm.length === 2) { c.fillStyle = '#14141e'; c.fillRect(GUTTER, y, n * CELL, ROWH); }
+        c.fillStyle = '#16161f'; c.fillRect(0, y, GUTTER, ROWH);
+        c.fillStyle = '#8a8aa0'; c.font = '10px system-ui'; c.fillText(nm + (R === 24 ? Math.floor(pitch / 12 - 1) : ''), 4, y + 12);
+        c.strokeStyle = '#1f1f2c'; c.beginPath(); c.moveTo(0, y); c.lineTo(pcv.width, y); c.stroke();
+      }
+      for (var s = 0; s <= n; s++) { c.strokeStyle = s % 16 === 0 ? '#7b6cff' : s % 4 === 0 ? '#3a3a55' : '#1a1a28'; c.beginPath(); c.moveTo(GUTTER + s * CELL, 0); c.lineTo(GUTTER + s * CELL, pcv.height); c.stroke(); }
+      TRACKS.forEach(function(t) {
+        var on = t[0] === st.tr, rr = rows(t[0]);
+        if (!on && (rr !== R)) return;
+        c.globalAlpha = on ? 1 : .22; c.fillStyle = TCOL[t[0]];
+        Object.keys(st.mus[t[0]]).forEach(function(k) {
+          var p = k.split('_'), s = +p[0], pi = +p[1], len = st.mus[t[0]][k];
+          var ry = R === 24 ? (71 - pi) * ROWH : (2 - pi) * ROWH;
+          c.fillRect(GUTTER + s * CELL + 1, ry + 1, len * CELL - 2, ROWH - 2);
+        });
+        c.globalAlpha = 1;
+      });
+    }
+    $('mm-bars').onchange = pdraw;
+    var mdrag = null;
+    function mpos(e) {
+      var r = pcv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, R = rows(st.tr), s = Math.floor((x - GUTTER) / CELL), rr = Math.floor(y / ROWH);
+      if (s < 0 || s >= bars() * 16 || rr < 0 || rr >= R) return null;
+      return { s: s, p: R === 24 ? 71 - rr : 2 - rr };
+    }
+    pcv.addEventListener('pointerdown', function(e) {
+      var p = mpos(e); if (!p) return; e.preventDefault(); var tk = st.mus[st.tr];
+      // click inside an existing note removes it
+      for (var k in tk) { var q = k.split('_'); if (+q[1] === p.p && p.s >= +q[0] && p.s < +q[0] + tk[k]) { delete tk[k]; pdraw(); return; } }
+      var len = st.tr === 'drums' ? 1 : parseInt($('mm-nlen').value); tk[p.s + '_' + p.p] = len; mdrag = { k: p.s + '_' + p.s, s: p.s, key: p.s + '_' + p.p };
+      if (st.tr !== 'drums') pcv.setPointerCapture(e.pointerId); preview(st.tr, p.p); pdraw();
+    });
+    pcv.addEventListener('pointermove', function(e) { if (!mdrag || st.tr === 'drums') return; var p = mpos(e); if (!p) return; st.mus[st.tr][mdrag.key] = Math.max(1, p.s - mdrag.s + 1); pdraw(); });
+    pcv.addEventListener('pointerup', function() { mdrag = null; });
+    $('mm-mclr').onclick = function() { st.mus[st.tr] = {}; pdraw(); };
+
+    // synth
+    var FORM = { bf: [[800, 1200], 1.0], opp: [[500, 900], 0.5] };
+    function voice(ctx, dest, t0, dur, freq, who) {
+      var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+      var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5.5; lg.gain.value = freq * 0.012; lfo.connect(lg); lg.connect(o.frequency);
+      var env = ctx.createGain(); env.gain.setValueAtTime(0, t0); env.gain.linearRampToValueAtTime(0.35, t0 + 0.04); env.gain.setValueAtTime(0.35, t0 + Math.max(0.05, dur - 0.08)); env.gain.linearRampToValueAtTime(0, t0 + dur);
+      var f = FORM[who][0];
+      f.forEach(function(fr) { var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fr; bp.Q.value = 6; var g = ctx.createGain(); g.gain.value = 1.4; o.connect(bp); bp.connect(g); g.connect(env); });
+      env.connect(dest); o.start(t0); lfo.start(t0); o.stop(t0 + dur + .05); lfo.stop(t0 + dur + .05);
+    }
+    function tone(ctx, dest, t0, dur, freq, type, vol) {
+      var o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; var g = ctx.createGain();
+      g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + Math.max(dur, 0.08)); o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + Math.max(dur, 0.08) + .05);
+    }
+    function noise(ctx, dest, t0, dur, hp, vol) {
+      var b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      var s = ctx.createBufferSource(); s.buffer = b; var f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; var g = ctx.createGain();
+      g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur); s.connect(f); f.connect(g); g.connect(dest); s.start(t0);
+    }
+    function play(ctx, dest, tr, t0, dur, pitch) {
+      var fr = 440 * Math.pow(2, (pitch - 69) / 12);
+      if (tr === 'bf' || tr === 'opp') voice(ctx, dest, t0, dur, fr, tr);
+      else if (tr === 'lead') tone(ctx, dest, t0, dur, fr, 'square', 0.12);
+      else if (tr === 'bass') tone(ctx, dest, t0, dur, fr / 2, 'triangle', 0.4);
+      else if (pitch === 2) { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + .15); g.gain.setValueAtTime(.8, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .2); o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + .25); }
+      else if (pitch === 1) noise(ctx, dest, t0, .15, 1500, .5); else noise(ctx, dest, t0, .05, 7000, .25);
+    }
+    var pvCtx = null;
+    function preview(tr, p) { try { pvCtx = pvCtx || new (window.AudioContext || window.webkitAudioContext)(); play(pvCtx, pvCtx.destination, tr, pvCtx.currentTime, .25, tr === 'drums' ? p : p); } catch (e) {} }
+    function render(trs) {
+      var sec = stepMs() / 1000, n = bars() * 16, total = n * sec + 1.5, sr = 22050;
+      var oc = new OfflineAudioContext(1, Math.ceil(total * sr), sr), master = oc.createGain(); master.gain.value = .8; master.connect(oc.destination);
+      trs.forEach(function(tr) { Object.keys(st.mus[tr]).forEach(function(k) { var p = k.split('_'); play(oc, master, tr, +p[0] * sec, st.mus[tr][k] * sec, +p[1]); }); });
+      return oc.startRendering();
+    }
+    var INST = ['lead', 'bass', 'drums'], VOX = ['bf', 'opp'];
+    function count(a) { var n = 0; a.forEach(function(t) { n += Object.keys(st.mus[t]).length; }); return n; }
+    $('mm-mplay').onclick = function() {
+      var btn = this; if (st.mplay && !st.mplay.paused) { st.mplay.pause(); btn.textContent = 'Render & play'; return; }
+      if (!count(INST.concat(VOX))) { $('mm-minfo').textContent = 'Add some notes first.'; return; }
+      btn.textContent = 'Rendering…'; render(INST.concat(VOX)).then(function(b) { st.mplay = new Audio(URL.createObjectURL(wavBlob(b))); st.mplay.play(); btn.textContent = 'Stop'; st.mplay.onended = function() { btn.textContent = 'Render & play'; }; });
+    };
+    $('mm-use').onclick = function() {
+      if (!count(INST.concat(VOX))) { $('mm-minfo').textContent = 'Add some notes first.'; return; }
+      $('mm-minfo').textContent = 'Rendering…';
+      var jobs = [render(INST.length && count(INST) ? INST : VOX)]; if (count(VOX) && count(INST)) jobs.push(render(VOX));
+      Promise.all(jobs).then(function(r) {
+        var inst = wavBlob(r[0]); inst.name = 'music.wav'; st.instFile = inst; st.vocFile = null;
+        if (r[1]) { var v = wavBlob(r[1]); v.name = 'voices.wav'; st.vocFile = v; }
+        setAudio(inst); $('mm-minfo').textContent = 'Done. The music is now the song\'s instrumental' + (r[1] ? ' and the voices are its vocals.' : '.') + ' Next: Chart tab or "Chart from voices".';
+      });
+    };
+    $('mm-gen').onclick = function() {
+      if (!count(VOX)) { $('mm-minfo').textContent = 'Add notes to the voice tracks first.'; return; }
+      snapshot(); st.notes = {};
+      VOX.forEach(function(tr) { Object.keys(st.mus[tr]).forEach(function(k) { var p = k.split('_'), l = (tr === 'bf' ? 4 : 0) + (+p[1] % 4), len = st.mus[tr][k]; st.notes[p[0] + '_' + l] = len > 1 ? len - 1 : 0; }); });
+      $('mm-minfo').textContent = 'Made ' + Object.keys(st.notes).length + ' chart notes from the voices (pitch decides the arrow). Press "Use in song" if you haven\'t, then check the Chart tab.';
+      if (!st.dur) st.dur = bars() * 16 * stepMs() / 1000;
+    };
+    // MIDI import
+    $('mm-midi').onchange = function() {
+      var f = this.files[0]; if (!f) return; var self = this;
+      f.arrayBuffer().then(function(ab) {
+        var d = new DataView(ab), p = 0; function u32() { var v = d.getUint32(p); p += 4; return v; } function u16() { var v = d.getUint16(p); p += 2; return v; }
+        if (u32() !== 0x4d546864) throw 'Not a MIDI file'; u32(); u16(); var nt = u16(), ppq = u16(), chans = {}, tempo = 500000;
+        for (var t = 0; t < nt; t++) {
+          if (u32() !== 0x4d54726b) break; var len = u32(), end = p + len, tick = 0, rs = 0, act = {};
+          while (p < end) {
+            var dl = 0, b; do { b = d.getUint8(p++); dl = (dl << 7) | (b & 127); } while (b & 128); tick += dl;
+            var s = d.getUint8(p); if (s & 128) { rs = s; p++; } else s = rs;
+            if (s === 0xFF) { var ty = d.getUint8(p++), ln = 0; do { b = d.getUint8(p++); ln = (ln << 7) | (b & 127); } while (b & 128); if (ty === 0x51 && ln === 3) tempo = (d.getUint8(p) << 16) | (d.getUint8(p + 1) << 8) | d.getUint8(p + 2); p += ln; }
+            else if (s === 0xF0 || s === 0xF7) { var l2 = 0; do { b = d.getUint8(p++); l2 = (l2 << 7) | (b & 127); } while (b & 128); p += l2; }
+            else { var ty2 = s & 0xF0, ch = s & 15, a = d.getUint8(p++), v = (ty2 === 0xC0 || ty2 === 0xD0) ? 0 : d.getUint8(p++), key = t + ':' + ch;
+              if (ty2 === 0x90 && v > 0) { act[key + ':' + a] = tick; (chans[key] = chans[key] || { ch: ch, n: [] }); }
+              else if (ty2 === 0x80 || (ty2 === 0x90 && v === 0)) { var st0 = act[key + ':' + a]; if (st0 !== undefined) { chans[key].n.push([st0, a, tick - st0]); delete act[key + ':' + a]; } } }
+          }
+          p = end;
+        }
+        var list = Object.keys(chans).filter(function(k) { return chans[k].n.length; }).map(function(k) { return chans[k]; });
+        if (!list.length) throw 'No notes found in that MIDI file';
+        $('mm-bpm').value = Math.round(60000000 / tempo);
+        var map = $('mm-midimap'); map.innerHTML = '<div class="note">Choose which track each MIDI channel becomes, then press Apply.</div>';
+        var defs = ['bf', 'opp', 'lead', 'bass'], selects = [];
+        list.forEach(function(c, i) {
+          var r = document.createElement('div'); r.className = 'row'; var s = document.createElement('select'); s.style.width = 'auto';
+          s.innerHTML = '<option value="">(skip)</option>' + TRACKS.map(function(t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('');
+          s.value = c.ch === 9 ? 'drums' : (defs.shift() || ''); r.appendChild(document.createTextNode('Channel ' + (c.ch + 1) + ' (' + c.n.length + ' notes) → ')); r.appendChild(s); map.appendChild(r); selects.push(s);
+        });
+        var ap = document.createElement('button'); ap.className = 'b'; ap.textContent = 'Apply MIDI';
+        ap.onclick = function() {
+          var maxStep = 0; TRACKS.forEach(function(t) { st.mus[t[0]] = {}; });
+          list.forEach(function(c, i) {
+            var tr = selects[i].value; if (!tr) return;
+            c.n.forEach(function(nn) {
+              var s = Math.round(nn[0] / (ppq / 4)), len = Math.max(1, Math.round(nn[2] / (ppq / 4))); if (s >= 512) return; maxStep = Math.max(maxStep, s + len);
+              var pi; if (tr === 'drums') pi = nn[1] === 36 || nn[1] === 35 ? 2 : (nn[1] === 38 || nn[1] === 40) ? 1 : 0; else pi = 48 + (((nn[1] % 24) + 24) % 24);
+              st.mus[tr][s + '_' + pi] = tr === 'drums' ? 1 : len;
+            });
+          });
+          var nb = Math.min(32, Math.max(4, Math.ceil(maxStep / 16))); $('mm-bars').value = [4, 8, 12, 16, 24, 32].filter(function(x) { return x >= nb; })[0] || 32;
+          map.innerHTML = ''; self.value = ''; $('mm-minfo').textContent = 'MIDI imported (' + $('mm-bpm').value + ' BPM). Edit it here, then press "Use in song".'; pdraw();
+        };
+        map.appendChild(ap);
+      }).catch(function(e) { $('mm-minfo').textContent = 'MIDI import failed: ' + e; });
+    };
+
+    // ---------- assets rows ----------
+    var arows = [];
     function addRow() {
       var tr = document.createElement('tr'), obj = { file: null };
-      tr.innerHTML = '<td><input type="file"></td><td><input list="mm-targets" placeholder="images/menuBG.png" style="width:100%"></td><td><button class="b">x</button></td>';
+      tr.innerHTML = '<td><input type="file"></td><td><input list="mm-targets" placeholder="images/menuBG.png"></td><td style="width:40px"><button class="b">x</button></td>';
       var ins = tr.querySelectorAll('input');
-      ins[0].onchange = function() {
-        obj.file = this.files[0] || null;
-        if (obj.file && !ins[1].value) ins[1].value = (/\.(png|xml)$/i.test(obj.file.name) ? 'images/' : /\.(ogg|mp3|wav)$/i.test(obj.file.name) ? 'sounds/' : '') + obj.file.name;
-      };
-      obj.target = ins[1];
-      tr.querySelector('button').onclick = function() { tr.remove(); rows.splice(rows.indexOf(obj), 1); };
-      rows.push(obj); $('mm-rows').appendChild(tr);
+      ins[0].onchange = function() { obj.file = this.files[0] || null; if (obj.file && !ins[1].value) ins[1].value = (/\.(png|xml)$/i.test(obj.file.name) ? 'images/' : /\.(ogg|mp3|wav)$/i.test(obj.file.name) ? 'sounds/' : '') + obj.file.name; };
+      obj.target = ins[1]; tr.querySelector('button').onclick = function() { tr.remove(); arows.splice(arows.indexOf(obj), 1); };
+      arows.push(obj); $('mm-rows').appendChild(tr);
     }
     $('mm-addrow').onclick = addRow; addRow();
 
+    // ---------- build ----------
     function build() {
-      var name = $('mm-name').value.trim() || 'My Song', id = slug(name) || 'my-song';
-      var files = [], enc = new TextEncoder(), top = id + '/', jobs = [];
+      var name = $('mm-name').value.trim() || 'My Song', id = slug(name) || 'my-song', files = [], enc = new TextEncoder(), top = id + '/', jobs = [];
       function add(p, d) { files.push({ name: top + p, data: d }); }
-      var b = bpm(), sm = stepMs(), n = Object.keys(st.notes).length;
-      var instF = $('mm-inst').files[0], vocF = $('mm-voc').files[0];
-      if (n > 0 && !instF) return Promise.reject('Pick an instrumental for the song, or remove its notes.');
+      var b = bpm(), sm = stepMs(), n = Object.keys(st.notes).length, instF = st.instFile, vocF = st.vocFile;
+      if (n > 0 && !instF) return Promise.reject('Add an instrumental (Song tab) or render music (Music tab) first, or clear the chart notes.');
       if (instF) {
         var secs = Math.ceil(totalSteps() / 16), sections = [];
         for (var i = 0; i < secs; i++) sections.push({ sectionNotes: [], sectionBeats: 4, lengthInSteps: 16, mustHitSection: true, gfSection: false, bpm: b, changeBPM: false, altAnim: false });
-        Object.keys(st.notes).forEach(function(k) {
-          var p = k.split('_'), s = +p[0], l = +p[1];
-          sections[Math.floor(s / 16)].sectionNotes.push([Math.round(s * sm), l, Math.round(st.notes[k] * sm)]);
-        });
+        Object.keys(st.notes).forEach(function(k) { var p = k.split('_'), s = +p[0], l = (+p[1] + 4) % 8; if (sections[Math.floor(s / 16)]) sections[Math.floor(s / 16)].sectionNotes.push([Math.round(s * sm), l, Math.round(st.notes[k] * sm)]); });
         sections.forEach(function(x) { x.sectionNotes.sort(function(a, c) { return a[0] - c[0]; }); });
-        var opp = $('mm-opp').value || 'dad', pl = $('mm-pl').value || 'bf', gf = $('mm-gf').value || 'gf', stg = $('mm-stage').value || 'stage';
+        var opp = val('mm-opp'), pl = val('mm-pl'), gf = val('mm-gf'), stg = val('mm-stage'), df = DIFFS[+$('mm-diff').value][1];
         var chart = { song: { song: name, notes: sections, events: [], bpm: b, needsVoices: !!vocF, speed: parseFloat($('mm-speed').value) || 2, player1: pl, player2: opp, gfVersion: gf, stage: stg, validScore: true } };
-        add('data/' + id + '/' + id + '.json', enc.encode(JSON.stringify(chart)));
-        add('weeks/' + id + '.json', enc.encode(JSON.stringify({ songs: [[name, opp, [146, 113, 253]]], weekCharacters: [opp, pl, gf], weekBackground: stg, storyName: name, weekBefore: 'tutorial', weekName: name, startUnlocked: true, hideStoryMode: true, hideFreeplay: false, difficulties: '' })));
+        add('data/' + id + '/' + id + df + '.json', enc.encode(JSON.stringify(chart)));
+        add('weeks/' + id + '.json', enc.encode(JSON.stringify({ songs: [[name, opp, hex2rgb($('mm-color').value)]], weekCharacters: [opp, pl, gf], weekBackground: stg, storyName: name, weekBefore: 'tutorial', weekName: name, startUnlocked: true, hideStoryMode: true, hideFreeplay: false, difficulties: DIFFS[+$('mm-diff').value][0] })));
         jobs.push(bytes(instF).then(function(d) { add('songs/' + id + '/Inst.' + ext(instF), d); }));
         if (vocF) jobs.push(bytes(vocF).then(function(d) { add('songs/' + id + '/Voices.' + ext(vocF), d); }));
       }
-      rows.forEach(function(r) {
-        if (!r.file) return;
-        var t = r.target.value.trim().replace(/^\/+/, '').replace(/\.\./g, '');
-        if (!t) return;
-        jobs.push(bytes(r.file).then(function(d) { add(t, d); }));
-      });
+      arows.forEach(function(r) { if (!r.file) return; var t = r.target.value.trim().replace(/^\/+/, '').replace(/\.\./g, ''); if (t) jobs.push(bytes(r.file).then(function(d) { add(t, d); })); });
       return Promise.all(jobs).then(function() {
-        if (!files.length) throw 'Nothing to save yet. Add a song with notes or at least one file.';
-        add('pack.json', enc.encode(JSON.stringify({ name: name, description: $('mm-desc').value, restart: false, runsGlobally: false, color: [170, 0, 255] })));
+        if (!files.length) throw 'Nothing to save yet. Add a song or at least one file.';
+        add('pack.json', enc.encode(JSON.stringify({ name: name, description: $('mm-desc').value, restart: false, runsGlobally: false, color: hex2rgb($('mm-color').value) })));
         return { id: id, blob: makeZip(files) };
       });
     }
     $('mm-dl').onclick = function() {
-      build().then(function(r) {
-        var a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = r.id + '.zip'; document.body.appendChild(a); a.click(); a.remove();
-        $('mm-msg').textContent = 'Saved ' + r.id + '.zip. You can share it or load it with the Import mod button.';
-      }, function(e) { $('mm-msg').textContent = String(e); });
+      build().then(function(r) { var a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = r.id + '.zip'; document.body.appendChild(a); a.click(); a.remove(); $('mm-msg').textContent = 'Saved ' + r.id + '.zip. Share it or load it with the Import mod button.'; }, function(e) { $('mm-msg').textContent = String(e); });
     };
     $('mm-inst-btn').onclick = function() {
       if (!window.psychImportZip) { $('mm-msg').textContent = 'Installing works once the game has loaded in a Modded mode. Use Download instead.'; return; }
-      build().then(function(r) { return bytes(r.blob).then(function(d) { window.psychImportZip(r.id + '.zip', d); $('mm-msg').textContent = 'Installed. Go back to the main menu and open Freeplay to find your song.'; }); },
-        function(e) { $('mm-msg').textContent = String(e); });
+      build().then(function(r) { return bytes(r.blob).then(function(d) { window.psychImportZip(r.id + '.zip', d); $('mm-msg').textContent = 'Installed. Go to the main menu and open Freeplay to find your song.'; }); }, function(e) { $('mm-msg').textContent = String(e); });
     };
-    layout();
   }
   window.psychOpenMaker = open;
 })();
