@@ -190,6 +190,10 @@ function __psychBoot(go0) {
     function raf(fn) { return origRaf.call(window, fn); }
     window.requestAnimationFrame = function(cb) { held.push(cb); return held.length; };
     try { if (window.Howler && Howler.ctx && Howler.ctx.state === 'running') { Howler.ctx.suspend(); howlSusp = true; } } catch (e) {}
+    var hid = document.getElementById('openfl-content'), hidVis = hid ? hid.style.visibility : '';
+    if (hid) hid.style.visibility = 'hidden';
+    try { if (window.Howler) Howler.mute(true); } catch (e) {}
+    var guard = setInterval(function() { try { if (window.Howler && Howler.ctx && Howler.ctx.state === 'running') { Howler.ctx.suspend(); howlSusp = true; } } catch (e) {} }, 300);
     ['keydown', 'keyup', 'keypress'].forEach(function(t) { root.addEventListener(t, function(e) { e.stopPropagation(); }); });
     var $ = function(i) { return root.querySelector('#' + i); };
     st = { notes: {}, dur: 0, audio: null, url: null, instFile: null, vocFile: null, undo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, samp: {}, tr: 'bf', mplay: null };
@@ -206,6 +210,8 @@ function __psychBoot(go0) {
     }
     Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(b) { b.onclick = function() { show(b.getAttribute('data-t')); }; });
     function close() { if (st.audio) st.audio.pause(); if (st.mplay) st.mplay.pause(); window.removeEventListener('resize', layout); document.removeEventListener('keydown', keys, true); root.remove(); style.remove(); st = null;
+      clearInterval(guard); if (hid) hid.style.visibility = hidVis;
+      try { if (window.Howler) Howler.mute(false); } catch (e) {}
       window.requestAnimationFrame = origRaf; held.splice(0).forEach(function(cb) { origRaf.call(window, cb); });
       try { if (howlSusp) Howler.ctx.resume(); } catch (e) {} }
     $('mm-close').onclick = function() { if (confirm('Close the Mod Maker? Unsaved work will be lost.')) close(); };
@@ -660,7 +666,7 @@ canvas{touch-action:none;outline:none}
     window.__psychModsEnabled = !!mods;
     panel.style.display = 'none';
     var sc = document.createElement('script');
-    sc.src = './PsychOnline.js?v=1792964029';
+    sc.src = './PsychOnline.js?v=1792964351';
     sc.onload = function() { __psychBoot(function() { lime.embed("PsychOnline", "openfl-content", 1280, 720, { parameters: {} }); }); };
     document.head.appendChild(sc);
     if (mods) addImportButton();
