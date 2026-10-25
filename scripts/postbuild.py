@@ -89,6 +89,7 @@ canvas{touch-action:none;outline:none}
 <button data-hidden="0" data-mods="1">Normal &mdash; Modded<small>Runs in this tab. Mods enabled (can be slower to start).</small></button>
 <button data-hidden="1" data-mods="0">Hidden &mdash; Vanilla<small>Opens in an about:blank tab so the page address isn&#39;t shown. No mods.</small></button>
 <button data-hidden="1" data-mods="1">Hidden &mdash; Modded<small>Opens in an about:blank tab. Mods enabled.</small></button>
+<button id="psych-mm" type="button">Mod Maker<small>Make your own song or re-skin mod, then import it in a Modded mode.</small></button>
 <div class="note" id="psych-launch-note"></div>
 </div></div>
 <script>
@@ -176,7 +177,8 @@ canvas{touch-action:none;outline:none}
       });
       inp.value = '';
     };
-    document.body.appendChild(inp); document.body.appendChild(btn);
+    var mb = btn.cloneNode(true); mb.textContent = 'Mod Maker'; mb.style.left = '150px'; mb.onmouseenter = btn.onmouseenter; mb.onmouseleave = function() { mb.style.opacity = .75; }; mb.onmouseenter = function() { mb.style.opacity = 1; }; mb.onclick = function() { window.psychOpenMaker(); };
+    document.body.appendChild(inp); document.body.appendChild(btn); document.body.appendChild(mb);
   }
   function openHidden(mods) {
     var base = location.href.split('#')[0].split('?')[0];
@@ -189,6 +191,7 @@ canvas{touch-action:none;outline:none}
     note.textContent = 'Opened in a new about:blank tab. You can close this one.';
   }
   if (!fileMode && 'serviceWorker' in navigator) { try { navigator.serviceWorker.register('./sw.js'); } catch (e) {} }
+  document.getElementById('psych-mm').onclick = function() { window.psychOpenMaker(); };
   if (launch === 'vanilla' || launch === 'modded') { startGame(launch === 'modded'); return; }
   Array.prototype.forEach.call(panel.querySelectorAll('button'), function(b) {
     b.addEventListener('click', function() {
@@ -199,6 +202,7 @@ canvas{touch-action:none;outline:none}
 })();
 </script>
 '''.replace('__VER__',str(int(__import__('time').time())))
-s=s.replace('<script type="text/javascript" src="./PsychOnline.js"></script>', boot+launcher,1)
+mmjs='<script>'+open('/home/claude/psych/scripts/modmaker.js').read()+'</script>\n'
+s=s.replace('<script type="text/javascript" src="./PsychOnline.js"></script>', boot+mmjs+launcher,1)
 s=re.sub(r'lime\.embed \("PsychOnline", "openfl-content", 1280, 720, \{ parameters: \{\} \}\);', '', s)
 open(p,'w').write(s)

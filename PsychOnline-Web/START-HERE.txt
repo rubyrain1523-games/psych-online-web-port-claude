@@ -8,3 +8,5 @@ OFFLINE / LOCAL HTML
 - Double-click index.html (file://): pick a mode, then choose this PsychOnline-Web folder when asked. Files are read locally, nothing is uploaded. Hidden mode is not available this way.
 - Hosted version: after you have visited it once online, it is cached and also opens offline.
 - Online play (rooms, sign-in) always needs internet.
+
+MOD MAKER: use the Mod Maker button on the start menu or in-game (Modded modes) to make song and re-skin mods; save as a zip or install directly.
