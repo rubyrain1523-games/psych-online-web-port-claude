@@ -1,0 +1,22 @@
+import time,zipfile,json
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1280,'height':700},accept_downloads=True)
+    errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)[:200])); pg.on('dialog',lambda d:d.accept())
+    pg.goto('http://localhost:8123/index.html'); time.sleep(1)
+    pg.click('#psych-mm'); pg.select_option('#mm-side','1')
+    pg.click('.tabs button[data-t=music]'); time.sleep(1)
+    pg.select_option('#mm-snd','sample')
+    opts=pg.eval_on_selector_all('#mm-sgame option','o=>o.map(x=>x.value)'); print(len(opts))
+    v=[o for o in opts if 'bopeebo' in o and 'Player' in o] or opts[1:2]; print(v)
+    pg.select_option('#mm-sgame',v[0]); time.sleep(3)
+    print(pg.inner_text('#mm-sinfo'))
+    cv=pg.locator('#mm-pcv'); bx=cv.bounding_box()
+    for i in range(6): pg.mouse.click(bx['x']+56+22*(i*3)+5, bx['y']+16*(6+i%4)+5)
+    pg.screenshot(path='/tmp/claude-0/s1.png')
+    pg.click('#mm-use'); time.sleep(6); print(pg.inner_text('#mm-minfo')); print(pg.inner_text('#mm-audioinfo'))
+    pg.click('.tabs button[data-t=out]')
+    with pg.expect_download() as d: pg.click('#mm-dl')
+    d.value.save_as('/tmp/claude-0/out3.zip'); z=zipfile.ZipFile('/tmp/claude-0/out3.zip'); print(z.testzip(), [ (n,z.getinfo(n).file_size) for n in z.namelist()])
+    c=json.loads(z.read('my-song/data/my-song/my-song.json'))['song']; print(c['player1'],c['player2'])
+    print(errs); b.close()

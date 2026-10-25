@@ -72,7 +72,8 @@
         '<label>BPM<input id="mm-bpm" type="number" value="120" min="40" max="300"></label>' +
         '<label>Scroll speed<input id="mm-speed" type="number" value="2" step="0.1" min="0.5" max="5"></label>' +
         '<label>Difficulty<select id="mm-diff">' + DIFFS.map(function(d, i) { return '<option value="' + i + '">' + d[0] + '</option>'; }).join('') + '</select></label>' +
-        '<label>Menu color<input id="mm-color" type="color" value="#9271fd"></label></div>' +
+        '<label>Menu color<input id="mm-color" type="color" value="#9271fd"></label>' +
+        '<label>Play as<select id="mm-side"><option value="0">Player (Boyfriend side)</option><option value="1">Opponent</option></select></label></div>' +
       '<h3>Characters</h3><div class="grid">' + sel('mm-pl', 'Player', PLAYERS) + sel('mm-opp', 'Opponent', OPPS) + sel('mm-gf', 'Girlfriend', GFS) + sel('mm-stage', 'Stage', STAGES) + '</div>' +
       '<h3>Audio</h3><div class="grid"><label>Instrumental (mp3/ogg/wav)<input id="mm-inst" type="file" accept="audio/*"></label><label>Vocals (optional)<input id="mm-voc" type="file" accept="audio/*"></label></div>' +
       '<div class="info" id="mm-audioinfo">No audio picked. You can also build the music yourself in the Music tab.</div></div>' +
@@ -82,6 +83,12 @@
         '<div class="row"><label>Bars<select id="mm-bars"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option><option>32</option></select></label><label>Note length<select id="mm-nlen"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option></select></label>' +
           '<button class="b" id="mm-mplay">Render &amp; play</button><button class="b" id="mm-use">Use in song</button><button class="b" id="mm-gen">Chart from voices</button><button class="b" id="mm-mclr">Clear track</button><label>Import MIDI<input id="mm-midi" type="file" accept=".mid,.midi"></label></div>' +
         '<div class="info" id="mm-minfo">Click to add a note, click it again to remove. Uses the BPM from the Song tab.</div><div id="mm-midimap"></div>' +
+        '<div class="row" style="border:1px solid #33334a;border-radius:8px;padding:8px;align-items:flex-start"><div style="min-width:170px"><b id="mm-sndt">Sound</b><div class="info">Synth or a real sample (e.g. a snippet of Boyfriend\'s voice) played like a synthesizer.</div></div>' +
+          '<label>Sound<select id="mm-snd"><option value="synth">Built-in synth</option><option value="sample">Sample</option></select></label>' +
+          '<span id="mm-sampui" style="display:none;flex:1;min-width:260px"><div class="row" style="margin-top:0"><label>From a file<input id="mm-sfile" type="file" accept="audio/*"></label>' +
+          '<label>From the game\'s vocals<select id="mm-sgame"><option value="">Loading…</option></select></label><button class="b" id="mm-smic">Record mic</button></div>' +
+          '<canvas id="mm-wave" width="640" height="80" style="width:100%;max-width:640px;height:80px;background:#0f0f17;border-radius:6px;cursor:ew-resize"></canvas>' +
+          '<div class="row"><button class="b" id="mm-shear">Hear snippet</button><label>Pitch the snippet is at<select id="mm-sroot"></select></label><span class="info" id="mm-sinfo">Drag on the waveform to pick the snippet.</span></div></span></div>' +
         '<div class="ed" id="mm-ped" style="height:' + (24 * ROWH + 4) + 'px;max-height:60vh"><canvas id="mm-pcv"></canvas></div></div>' +
 
       '<div class="pane" id="mm-chart"><div class="row"><button class="b" id="mm-play">Play</button><label>Snap<select id="mm-snap"><option value="4">1/4 beat</option><option value="2" selected>1/2 beat</option><option value="1">1 beat</option></select></label>' +
@@ -98,7 +105,7 @@
         '<div class="row"><button class="b" id="mm-dl">Download mod zip</button><button class="b" id="mm-inst-btn">Install into the game now</button></div><div class="note" id="mm-msg"></div></div>';
     document.body.appendChild(root);
     var $ = function(i) { return root.querySelector('#' + i); };
-    st = { notes: {}, dur: 0, audio: null, url: null, instFile: null, vocFile: null, undo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, tr: 'bf', mplay: null };
+    st = { notes: {}, dur: 0, audio: null, url: null, instFile: null, vocFile: null, undo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, samp: {}, tr: 'bf', mplay: null };
     ['mm-pl', 'mm-opp', 'mm-gf', 'mm-stage'].forEach(function(id) { $(id).onchange = function() { $(id + '-c').style.display = this.value === '__c' ? '' : 'none'; }; });
     function val(id) { var s = $(id).value; return s === '__c' ? ($(id + '-c').value.trim() || 'bf') : s; }
     $('mm-pl').value = 'bf'; $('mm-opp').value = 'dad'; $('mm-gf').value = 'gf'; $('mm-stage').value = 'stage';
@@ -206,7 +213,7 @@
       var h = $('mm-tr'); h.innerHTML = '';
       TRACKS.forEach(function(t) {
         var b = document.createElement('button'); b.className = 'b' + (st.tr === t[0] ? ' on' : ''); b.textContent = t[1]; b.style.borderColor = TCOL[t[0]];
-        b.onclick = function() { st.tr = t[0]; mkTracks(); pdraw(); }; h.appendChild(b);
+        b.onclick = function() { st.tr = t[0]; mkTracks(); pdraw(); syncSnd(); }; h.appendChild(b);
       });
     }
     mkTracks();
@@ -253,6 +260,78 @@
     pcv.addEventListener('pointerup', function() { mdrag = null; });
     $('mm-mclr').onclick = function() { st.mus[st.tr] = {}; pdraw(); };
 
+
+    // ---------- sampler ----------
+    var acx = null; function getCtx() { acx = acx || new (window.AudioContext || window.webkitAudioContext)(); return acx; }
+    function sampNote(ctx, dest, t0, dur, freq, tr) {
+      var sm = st.samp[tr], src = ctx.createBufferSource(); src.buffer = sm.buf;
+      src.playbackRate.value = freq / (440 * Math.pow(2, (sm.root - 69) / 12));
+      src.loop = true; src.loopStart = sm.start; src.loopEnd = Math.max(sm.end, sm.start + 0.05);
+      var g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.9, t0 + 0.01); g.gain.setValueAtTime(0.9, t0 + Math.max(0.02, dur - 0.04)); g.gain.linearRampToValueAtTime(0, t0 + dur);
+      src.connect(g); g.connect(dest); src.start(t0, sm.start); src.stop(t0 + dur + 0.02);
+    }
+    var wv = $('mm-wave'), wctx = wv.getContext('2d');
+    var rootSel = $('mm-sroot');
+    for (var m = 36; m <= 84; m++) rootSel.innerHTML += '<option value="' + m + '"' + (m === 60 ? ' selected' : '') + '>' + NOTEN[m % 12] + (Math.floor(m / 12) - 1) + '</option>';
+    function cs() { return st.samp[st.tr]; }
+    function wdraw() {
+      var c = wctx, w = wv.width, h = wv.height, sm = cs(); c.fillStyle = '#0f0f17'; c.fillRect(0, 0, w, h);
+      if (!sm) { c.fillStyle = '#6a6a80'; c.font = '12px system-ui'; c.fillText('No sample loaded for this track', 10, 44); return; }
+      c.fillStyle = '#4a4a6a'; for (var x = 0; x < w; x++) { var a = sm.peaks[x] * h / 2; c.fillRect(x, h / 2 - a, 1, a * 2 || 1); }
+      var x0 = sm.start / sm.buf.duration * w, x1 = sm.end / sm.buf.duration * w;
+      c.fillStyle = 'rgba(123,108,255,.35)'; c.fillRect(x0, 0, x1 - x0, h); c.fillStyle = TCOL[st.tr]; for (var x = Math.floor(x0); x < x1; x++) { var a2 = sm.peaks[x] * h / 2; c.fillRect(x, h / 2 - a2, 1, a2 * 2 || 1); }
+      $('mm-sinfo').textContent = 'Snippet ' + sm.start.toFixed(2) + 's – ' + sm.end.toFixed(2) + 's of ' + sm.buf.duration.toFixed(1) + 's';
+    }
+    function setSample(buf, label) {
+      var d = buf.getChannelData(0), W = 640, per = Math.max(1, Math.floor(d.length / W)), peaks = [], x, i;
+      for (x = 0; x < W; x++) { var mx = 0; for (i = x * per; i < Math.min(d.length, (x + 1) * per); i += 8) mx = Math.max(mx, Math.abs(d[i])); peaks.push(Math.min(1, mx * 1.2)); }
+      // auto-pick the loudest 0.4s
+      var win = Math.floor(buf.sampleRate * 0.4), hop = Math.floor(buf.sampleRate * 0.05), best = 0, bi = 0;
+      for (var s0 = 0; s0 + win < d.length; s0 += hop) { var e = 0; for (i = s0; i < s0 + win; i += 16) e += d[i] * d[i]; if (e > best) { best = e; bi = s0; } }
+      var st0 = bi / buf.sampleRate; st.samp[st.tr] = { buf: buf, peaks: peaks, start: st0, end: Math.min(buf.duration, st0 + 0.4), root: parseInt(rootSel.value), label: label };
+      wdraw();
+    }
+    function decodeInto(ab, label) { getCtx().decodeAudioData(ab, function(b) { setSample(b, label); }, function() { $('mm-sinfo').textContent = 'Could not read that audio.'; }); }
+    function syncSnd() {
+      var tr = st.tr; $('mm-sndt').textContent = 'Sound: ' + TRACKS.filter(function(t) { return t[0] === tr; })[0][1];
+      var drums = tr === 'drums'; $('mm-snd').parentNode.style.display = drums ? 'none' : '';
+      $('mm-snd').value = st.samp[tr] || $('mm-snd').getAttribute('data-want-' + tr) ? 'sample' : 'synth';
+      var on = !drums && $('mm-snd').value === 'sample'; $('mm-sampui').style.display = on ? '' : 'none';
+      if (on) { rootSel.value = cs() ? cs().root : 60; wdraw(); }
+    }
+    $('mm-snd').onchange = function() {
+      var tr = st.tr; if (this.value === 'synth') { delete st.samp[tr]; this.removeAttribute('data-want-' + tr); } else this.setAttribute('data-want-' + tr, '1');
+      syncSnd();
+    };
+    rootSel.onchange = function() { if (cs()) cs().root = parseInt(this.value); };
+    $('mm-sfile').onchange = function() { var f = this.files[0]; if (f) f.arrayBuffer().then(function(ab) { decodeInto(ab, f.name); }); };
+    $('mm-sgame').onchange = function() {
+      var v = this.value; if (!v) return; $('mm-sinfo').textContent = 'Loading…';
+      fetch(v).then(function(r) { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(function(ab) { decodeInto(ab, v); }).catch(function() { $('mm-sinfo').textContent = 'Could not load that file.'; });
+    };
+    fetch('vfs_manifest.json').then(function(r) { return r.json(); }).then(function(m) {
+      var keys = Object.keys(m.files).filter(function(k) { return /^assets\/songs\/.*\/Voices.*\.(mp3|ogg)$/.test(k); }).sort();
+      $('mm-sgame').innerHTML = '<option value="">Pick a vocal track…</option>' + keys.map(function(k) { var q = k.split('/'); return '<option value="' + k + '">' + q[2] + ' – ' + q[3].replace(/\.\w+$/, '') + '</option>'; }).join('');
+    }).catch(function() { $('mm-sgame').innerHTML = '<option value="">(not available here)</option>'; });
+    var rec = null;
+    $('mm-smic').onclick = function() {
+      var b = this; if (rec) { rec.stop(); return; }
+      if (!navigator.mediaDevices) { $('mm-sinfo').textContent = 'Microphone not available here.'; return; }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        var chunks = []; rec = new MediaRecorder(stream); b.textContent = 'Stop recording';
+        rec.ondataavailable = function(e) { chunks.push(e.data); };
+        rec.onstop = function() { stream.getTracks().forEach(function(t) { t.stop(); }); rec = null; b.textContent = 'Record mic'; new Blob(chunks).arrayBuffer().then(function(ab) { decodeInto(ab, 'mic'); }); };
+        rec.start();
+      }, function() { $('mm-sinfo').textContent = 'Microphone permission was denied.'; });
+    };
+    $('mm-shear').onclick = function() { var sm = cs(); if (!sm) return; var c = getCtx(), t = c.currentTime; sampNote(c, c.destination, t, Math.min(1, sm.end - sm.start + .2), 440 * Math.pow(2, (sm.root - 69) / 12), st.tr); };
+    var wdrag = null;
+    function wx(e) { var r = wv.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (cs() ? cs().buf.duration : 0); }
+    wv.addEventListener('pointerdown', function(e) { if (!cs()) return; wdrag = wx(e); cs().start = wdrag; cs().end = Math.min(cs().buf.duration, wdrag + 0.05); wv.setPointerCapture(e.pointerId); wdraw(); });
+    wv.addEventListener('pointermove', function(e) { if (wdrag === null) return; var x = wx(e); cs().start = Math.min(wdrag, x); cs().end = Math.max(wdrag + 0.05, x, cs().start + 0.05); wdraw(); });
+    wv.addEventListener('pointerup', function() { wdrag = null; });
+    syncSnd();
+
     // synth
     var FORM = { bf: [[800, 1200], 1.0], opp: [[500, 900], 0.5] };
     function voice(ctx, dest, t0, dur, freq, who) {
@@ -274,7 +353,8 @@
     }
     function play(ctx, dest, tr, t0, dur, pitch) {
       var fr = 440 * Math.pow(2, (pitch - 69) / 12);
-      if (tr === 'bf' || tr === 'opp') voice(ctx, dest, t0, dur, fr, tr);
+      if (tr !== 'drums' && st.samp[tr]) sampNote(ctx, dest, t0, dur, fr, tr);
+      else if (tr === 'bf' || tr === 'opp') voice(ctx, dest, t0, dur, fr, tr);
       else if (tr === 'lead') tone(ctx, dest, t0, dur, fr, 'square', 0.12);
       else if (tr === 'bass') tone(ctx, dest, t0, dur, fr / 2, 'triangle', 0.4);
       else if (pitch === 2) { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + .15); g.gain.setValueAtTime(.8, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .2); o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + .25); }
@@ -378,14 +458,14 @@
       var b = bpm(), sm = stepMs(), n = Object.keys(st.notes).length, instF = st.instFile, vocF = st.vocFile;
       if (n > 0 && !instF) return Promise.reject('Add an instrumental (Song tab) or render music (Music tab) first, or clear the chart notes.');
       if (instF) {
-        var secs = Math.ceil(totalSteps() / 16), sections = [];
+        var secs = Math.ceil(totalSteps() / 16), sections = [], sw = $('mm-side').value === '1';
         for (var i = 0; i < secs; i++) sections.push({ sectionNotes: [], sectionBeats: 4, lengthInSteps: 16, mustHitSection: true, gfSection: false, bpm: b, changeBPM: false, altAnim: false });
-        Object.keys(st.notes).forEach(function(k) { var p = k.split('_'), s = +p[0], l = (+p[1] + 4) % 8; if (sections[Math.floor(s / 16)]) sections[Math.floor(s / 16)].sectionNotes.push([Math.round(s * sm), l, Math.round(st.notes[k] * sm)]); });
+        Object.keys(st.notes).forEach(function(k) { var p = k.split('_'), s = +p[0], l = (+p[1] + 4) % 8; if (sw) l = (l + 4) % 8; if (sections[Math.floor(s / 16)]) sections[Math.floor(s / 16)].sectionNotes.push([Math.round(s * sm), l, Math.round(st.notes[k] * sm)]); });
         sections.forEach(function(x) { x.sectionNotes.sort(function(a, c) { return a[0] - c[0]; }); });
-        var opp = val('mm-opp'), pl = val('mm-pl'), gf = val('mm-gf'), stg = val('mm-stage'), df = DIFFS[+$('mm-diff').value][1];
-        var chart = { song: { song: name, notes: sections, events: [], bpm: b, needsVoices: !!vocF, speed: parseFloat($('mm-speed').value) || 2, player1: pl, player2: opp, gfVersion: gf, stage: stg, validScore: true } };
+        var opp = val('mm-opp'), pl = val('mm-pl'), swap = $('mm-side').value === '1', gf = val('mm-gf'), stg = val('mm-stage'), df = DIFFS[+$('mm-diff').value][1];
+        var chart = { song: { song: name, notes: sections, events: [], bpm: b, needsVoices: !!vocF, speed: parseFloat($('mm-speed').value) || 2, player1: swap ? opp : pl, player2: swap ? pl : opp, gfVersion: gf, stage: stg, validScore: true } };
         add('data/' + id + '/' + id + df + '.json', enc.encode(JSON.stringify(chart)));
-        add('weeks/' + id + '.json', enc.encode(JSON.stringify({ songs: [[name, opp, hex2rgb($('mm-color').value)]], weekCharacters: [opp, pl, gf], weekBackground: stg, storyName: name, weekBefore: 'tutorial', weekName: name, startUnlocked: true, hideStoryMode: true, hideFreeplay: false, difficulties: DIFFS[+$('mm-diff').value][0] })));
+        add('weeks/' + id + '.json', enc.encode(JSON.stringify({ songs: [[name, opp, hex2rgb($('mm-color').value)]], weekCharacters: swap ? [pl, opp, gf] : [opp, pl, gf], weekBackground: stg, storyName: name, weekBefore: 'tutorial', weekName: name, startUnlocked: true, hideStoryMode: true, hideFreeplay: false, difficulties: DIFFS[+$('mm-diff').value][0] })));
         jobs.push(bytes(instF).then(function(d) { add('songs/' + id + '/Inst.' + ext(instF), d); }));
         if (vocF) jobs.push(bytes(vocF).then(function(d) { add('songs/' + id + '/Voices.' + ext(vocF), d); }));
       }
