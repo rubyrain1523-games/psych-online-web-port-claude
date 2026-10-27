@@ -1,0 +1,21 @@
+name: Build offline zip
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['PsychOnline-Web/**']
+permissions:
+  contents: write
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip the game
+        run: zip -qr -1 PsychOnline-Web.zip PsychOnline-Web
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          gh release create latest PsychOnline-Web.zip --title "Psych Online - full offline download" --notes "Download PsychOnline-Web.zip, extract it, then follow START-HERE.txt (open index.html and pick the extracted folder when asked)."
