@@ -1,0 +1,20 @@
+import time,zipfile,json
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1366,'height':800},accept_downloads=True)
+    errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)[:200])); pg.on('dialog',lambda d:d.accept())
+    pg.goto('http://localhost:8123/index.html'); time.sleep(1); pg.click('#psych-mm')
+    pg.click('.tabs button[data-t=chars]'); pg.click('#mm-cnew'); time.sleep(.3)
+    pg.fill('#mm-cn','Orange Guy'); pg.keyboard.press('Tab'); time.sleep(.3)
+    pg.set_input_files('[data-f=idle]',['/tmp/claude-0/f0.png','/tmp/claude-0/f1.png','/tmp/claude-0/f2.png']); time.sleep(.5)
+    pg.set_input_files('[data-f=singLEFT]','/tmp/claude-0/strip.png'); time.sleep(.3)
+    time.sleep(1.5); pg.fill('[data-c=singLEFT]','3'); pg.keyboard.press('Tab'); time.sleep(.5)
+    for k in ['singDOWN','singUP','singRIGHT']: pg.set_input_files(f'[data-f={k}]','/tmp/claude-0/f1.png'); time.sleep(.3)
+    pg.screenshot(path='/tmp/claude-0/c1.png')
+    pg.click('.tabs button[data-t=song]'); print(pg.eval_on_selector_all('#mm-opp option','o=>o.map(x=>x.value)'))
+    pg.select_option('#mm-opp','orange-guy'); time.sleep(.3)
+    pg.click('.tabs button[data-t=out]')
+    with pg.expect_download() as d: pg.click('#mm-dl')
+    d.value.save_as('/tmp/claude-0/out5.zip'); z=zipfile.ZipFile('/tmp/claude-0/out5.zip'); print(z.testzip(), z.namelist())
+    j=json.loads(z.read('my-song/characters/orange-guy.json')); print(j['flip_x'],j['scale'],[(a['anim'],a['name']) for a in j['animations']])
+    print(z.read('my-song/images/characters/orange-guy.xml').decode()[:300]); print(errs); b.close()

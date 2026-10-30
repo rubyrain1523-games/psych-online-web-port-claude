@@ -82,7 +82,7 @@
       return '<div class="ch"><div class="ico"><img id="' + id + '-i" alt=""></div><label class="grow">' + label + '<select id="' + id + '">' + list.map(function(x) { return '<option>' + x + '</option>'; }).join('') + '<option value="__c">Custom…</option></select></label></div><input id="' + id + '-c" placeholder="custom name" style="display:none;margin-top:6px">';
     }
     root.innerHTML =
-      '<div class="top"><div class="logo">FNF MOD MAKER</div><div class="tabs"><button data-t="song" class="on">Song</button><button data-t="music">Music</button><button data-t="chart">Chart</button><button data-t="skin">Assets</button><button data-t="out">Export</button></div><span class="grow"></span><button class="b" id="mm-close">Close</button></div>' +
+      '<div class="top"><div class="logo">FNF MOD MAKER</div><div class="tabs"><button data-t="song" class="on">Song</button><button data-t="chars">Characters</button><button data-t="music">Music</button><button data-t="chart">Chart</button><button data-t="skin">Assets</button><button data-t="out">Export</button></div><span class="grow"></span><button class="b" id="mm-close">Close</button></div>' +
 
       '<div class="pane on" id="mm-song"><div class="cards">' +
         '<div class="card"><h3>Song</h3><div class="stack"><label>Song name<input id="mm-name" value="My Song"></label><div class="g3"><label>BPM<input id="mm-bpm" type="number" value="120" min="40" max="300" step="0.1"></label><label>Scroll speed<input id="mm-speed" type="number" value="2" step="0.1" min="0.5" max="5"></label><label>Difficulty<select id="mm-diff">' + DIFFS.map(function(d, i) { return '<option value="' + i + '">' + d[0] + '</option>'; }).join('') + '</select></label></div>' +
@@ -92,6 +92,7 @@
           '<label>Instrumental (mp3 / ogg / wav)<input id="mm-inst" type="file" accept="audio/*"></label><label>Vocals (optional)<input id="mm-voc" type="file" accept="audio/*"></label><div class="info" id="mm-audioinfo">No audio yet. You can build the music in the Music tab.</div></div></div>' +
       '</div></div>' +
 
+      '<div class="pane" id="mm-chars"></div>' +
       '<div class="pane" id="mm-music"><div class="tool"><div id="mm-tr" class="sr"></div><span class="grow"></span><button class="b pri" id="mm-mplay">▶ Render &amp; play</button><button class="b pri" id="mm-use">Use in song</button><button class="b" id="mm-gen">Chart from voices</button></div>' +
         '<div class="tool"><label>Bars<select id="mm-bars"><option>4</option><option selected>8</option><option>12</option><option>16</option><option>24</option><option>32</option></select></label><label>Snap<select id="mm-psnap">' + SNAPS.map(function(s, i) { return '<option value="' + s[1] + '"' + (i === 3 ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('') + '</select></label>' +
           '<label>Note length<select id="mm-nlen"><option value="0">Same as snap</option><option value="48">1/16</option><option value="96">1/8</option><option value="192">1/4</option><option value="384">1/2</option></select></label><label>Zoom<select id="mm-pzoom"><option value="64">Small</option><option value="96" selected>Medium</option><option value="150">Large</option></select></label>' +
@@ -121,7 +122,7 @@
         '<button class="b pri" id="mm-dl" style="justify-content:center;padding:12px">⬇ Download mod zip</button><button class="b" id="mm-inst-btn" style="justify-content:center;padding:12px">Install into the game now</button><div class="note" id="mm-msg"></div></div></div></div></div>';
     document.body.appendChild(root);
     var $ = function(i) { return root.querySelector('#' + i); };
-    st = { notes: {}, cam: {}, dur: 0, audio: null, url: null, peaks: null, instFile: null, vocFile: null, undo: [], redo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, samp: {}, vol: {}, tr: 'bf', drow: 0, mplay: null };
+    st = { chars: [], ci: 0, notes: {}, cam: {}, dur: 0, audio: null, url: null, peaks: null, instFile: null, vocFile: null, undo: [], redo: [], mus: { bf: {}, opp: {}, lead: {}, bass: {}, drums: {} }, samp: {}, vol: {}, tr: 'bf', drow: 0, mplay: null };
 
     // freeze the game underneath
     var origRaf = window.requestAnimationFrame, held = [], howlSusp = false;
@@ -136,7 +137,8 @@
 
     // character icons from the game's own files
     function setIcon(id, name) {
-      var img = $(id + '-i'), c = [name, (name || '').split('-')[0], 'face'], i = 0;
+      var img = $(id + '-i'); for (var q = 0; q < st.chars.length; q++) if (st.chars[q].slug === name && st.chars[q].iconUrl) { img.onerror = null; img.src = st.chars[q].iconUrl; return; }
+      var c = [name, (name || '').split('-')[0], 'face'], i = 0;
       img.onerror = function() { i++; if (i < c.length) img.src = 'assets/images/icons/icon-' + c[i] + '.png'; };
       img.src = 'assets/images/icons/icon-' + c[0] + '.png';
     }
@@ -152,13 +154,13 @@
     function show(t) {
       cur = t;
       Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(x) { x.classList.toggle('on', x.getAttribute('data-t') === t); });
-      ['song', 'music', 'chart', 'skin', 'out'].forEach(function(n) { $('mm-' + n).classList.toggle('on', n === t); });
-      if (t === 'chart') layout(); if (t === 'music') pdraw();
+      ['song', 'chars', 'music', 'chart', 'skin', 'out'].forEach(function(n) { $('mm-' + n).classList.toggle('on', n === t); });
+      if (t === 'chart') layout(); if (t === 'music') pdraw(); if (t === 'chars') renderChars();
     }
     Array.prototype.forEach.call(root.querySelectorAll('.tabs button'), function(b) { b.onclick = function() { show(b.getAttribute('data-t')); }; });
     function close() {
       if (st.audio) st.audio.pause(); if (st.mplay) st.mplay.pause(); window.removeEventListener('resize', layout); document.removeEventListener('keydown', keys, true); root.remove(); style.remove(); st = null;
-      clearInterval(guard); if (hid) hid.style.visibility = hidVis;
+      clearInterval(guard); clearInterval(ctimer); if (hid) hid.style.visibility = hidVis;
       try { if (window.Howler) Howler.mute(false); } catch (e) {}
       window.requestAnimationFrame = origRaf; held.splice(0).forEach(function(cb) { origRaf.call(window, cb); });
       try { if (howlSusp) Howler.ctx.resume(); } catch (e) {}
@@ -602,6 +604,100 @@
       }).catch(function(e) { $('mm-minfo').textContent = 'MIDI import failed: ' + e; });
     };
 
+
+    // ================= custom characters =================
+    var POSES = [['idle', 'Idle', 'idle'], ['singLEFT', 'Sing left', 'left'], ['singDOWN', 'Sing down', 'down'], ['singUP', 'Sing up', 'up'], ['singRIGHT', 'Sing right', 'right']];
+    var ctimer = setInterval(function() { if (cur === 'chars') tickPrev(); }, 60), prevs = [];
+    function newChar() { return { name: 'My Character', role: 'opponent', facesLeft: false, scale: 1, color: '#9271fd', iconCv: null, iconUrl: null, slug: 'my-character', poses: { idle: { frames: [], cols: 1, fps: 24 }, singLEFT: { frames: [], cols: 1, fps: 24 }, singDOWN: { frames: [], cols: 1, fps: 24 }, singUP: { frames: [], cols: 1, fps: 24 }, singRIGHT: { frames: [], cols: 1, fps: 24 } } }; }
+    function cslug(n) { var x = slug(n).replace(/^[^a-z]+/, ''); return x || 'custom-char'; }
+    function loadBitmaps(files, cols) {
+      return Promise.all(Array.prototype.map.call(files, function(f) { return createImageBitmap(f); })).then(function(bms) {
+        var out = [];
+        bms.forEach(function(bm) {
+          var n = Math.max(1, cols), w = Math.floor(bm.width / n);
+          for (var i = 0; i < n; i++) { var c = document.createElement('canvas'); c.width = w; c.height = bm.height; c.getContext('2d').drawImage(bm, i * w, 0, w, bm.height, 0, 0, w, bm.height); out.push(c); }
+        });
+        return out;
+      });
+    }
+    function refreshCharOptions() {
+      ['mm-pl', 'mm-opp'].forEach(function(id) {
+        var sel = $(id), keep = sel.value; Array.prototype.slice.call(sel.querySelectorAll('option[data-custom]')).forEach(function(o) { o.remove(); });
+        var cu = sel.querySelector('option[value="__c"]');
+        st.chars.forEach(function(c) { c.slug = cslug(c.name); var o = document.createElement('option'); o.textContent = c.slug; o.value = c.slug; o.setAttribute('data-custom', '1'); sel.insertBefore(o, cu); });
+        if (Array.prototype.some.call(sel.options, function(o) { return o.value === keep; })) sel.value = keep;
+        setIcon(id, val(id));
+      });
+    }
+    function makeIcon(ch) {
+      var src = ch.iconSrc || (ch.poses.idle.frames[0]); if (!src) return;
+      var c = document.createElement('canvas'); c.width = 300; c.height = 150; var x = c.getContext('2d'), r = Math.min(140 / src.width, 140 / src.height), w = src.width * r, h = src.height * r;
+      x.drawImage(src, 75 - w / 2, 75 - h / 2, w, h);
+      x.drawImage(src, 225 - w / 2, 75 - h / 2, w, h); x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(150,0,0,.35)'; x.fillRect(150, 0, 150, 150);
+      ch.iconCv = c; ch.iconUrl = c.toDataURL('image/png'); refreshCharOptions();
+    }
+    function tickPrev() {
+      var t = performance.now();
+      prevs.forEach(function(p) { var fr = p.ch.poses[p.k].frames; if (!fr.length) return; var f = fr[Math.floor(t / 1000 * (p.ch.poses[p.k].fps || 24)) % fr.length], c = p.cv.getContext('2d'); c.clearRect(0, 0, p.cv.width, p.cv.height); var r = Math.min(p.cv.width / f.width, p.cv.height / f.height); c.drawImage(f, (p.cv.width - f.width * r) / 2, p.cv.height - f.height * r, f.width * r, f.height * r); });
+    }
+    function renderChars() {
+      var pane = $('mm-chars'); prevs = [];
+      var ch = st.chars[st.ci], h = '<div class="tool"><div class="sr" id="mm-cl"></div><span class="grow"></span><button class="b pri" id="mm-cnew">+ New character</button>' + (ch ? '<button class="b" id="mm-cdel">Delete</button>' : '') + '</div>';
+      if (!ch) { pane.innerHTML = h + '<div class="card"><h3>Custom characters</h3><div class="note">Make your own player or opponent. Add pictures for Idle and the four sing poses (several pictures = an animation, or one picture with several frames side by side). The maker builds the sprite sheet, character file and health icon for you. Then pick the character in the Song tab.</div></div>'; }
+      else {
+        h += '<div class="cards"><div class="card"><h3>Character</h3><div class="stack"><label>Name<input id="mm-cn" value="' + ch.name.replace(/"/g, '') + '"></label><div class="g2"><label>Use as<select id="mm-cr"><option value="opponent">Opponent</option><option value="player">Player</option><option value="both">Both (left/right may mirror)</option></select></label>' +
+          '<label>Your pictures face<select id="mm-cf"><option value="0">Right (like Dad)</option><option value="1">Left (like Boyfriend)</option></select></label></div><div class="g2"><label>Size<input id="mm-cs" type="number" step="0.05" min="0.1" max="4" value="' + ch.scale + '"></label><label>Health bar color<input id="mm-cc" type="color" value="' + ch.color + '"></label></div>' +
+          '<label>Health icon picture (optional, else the first idle frame)<input id="mm-ci" type="file" accept="image/*"></label><div class="info">Icon name: <b>icon-' + cslug(ch.name) + '</b></div></div></div>';
+        POSES.forEach(function(ps) {
+          var po = ch.poses[ps[0]];
+          h += '<div class="card"><h3>' + ps[1] + '</h3><div class="stack"><canvas data-p="' + ps[0] + '" width="200" height="150" style="width:200px;height:150px;background:#07070b;border:1px solid var(--line);border-radius:8px"></canvas>' +
+            '<label>Pictures (PNG / JPG, pick several for an animation)<input type="file" accept="image/*" multiple data-f="' + ps[0] + '"></label><div class="g2"><label>Frames side by side in each picture<input type="number" min="1" max="60" value="' + po.cols + '" data-c="' + ps[0] + '"></label><label>Speed (fps)<input type="number" min="1" max="60" value="' + po.fps + '" data-s="' + ps[0] + '"></label></div><div class="info">' + po.frames.length + ' frame' + (po.frames.length === 1 ? '' : 's') + (ps[0] === 'idle' ? ' (required)' : '') + '</div></div></div>';
+        });
+        h += '</div>'; pane.innerHTML = h;
+        var q = function(sel) { return pane.querySelector(sel); };
+        q('#mm-cr').value = ch.role; q('#mm-cf').value = ch.facesLeft ? '1' : '0';
+        q('#mm-cn').onchange = function() { ch.name = this.value.trim() || 'My Character'; ch.slug = cslug(ch.name); refreshCharOptions(); renderChars(); };
+        q('#mm-cr').onchange = function() { ch.role = this.value; }; q('#mm-cf').onchange = function() { ch.facesLeft = this.value === '1'; };
+        q('#mm-cs').onchange = function() { ch.scale = parseFloat(this.value) || 1; }; q('#mm-cc').onchange = function() { ch.color = this.value; };
+        q('#mm-ci').onchange = function() { var f = this.files[0]; if (!f) return; createImageBitmap(f).then(function(bm) { var c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); ch.iconSrc = c; makeIcon(ch); renderChars(); }); };
+        Array.prototype.forEach.call(pane.querySelectorAll('[data-f]'), function(inp) { var k = inp.getAttribute('data-f'); inp.onchange = function() { if (!this.files.length) return; var tk = ch.poses[k].tok = (ch.poses[k].tok || 0) + 1; loadBitmaps(this.files, ch.poses[k].cols).then(function(fr) { if (ch.poses[k].tok !== tk) return; ch.poses[k].frames = fr; ch.poses[k].files = Array.prototype.slice.call(inp.files); if (k === 'idle' && !ch.iconSrc) makeIcon(ch); renderChars(); }); }; });
+        Array.prototype.forEach.call(pane.querySelectorAll('[data-c]'), function(inp) { var k = inp.getAttribute('data-c'); inp.onchange = function() { var po = ch.poses[k]; po.cols = Math.max(1, parseInt(this.value) || 1); var fl = po.files; var tk = po.tok = (po.tok || 0) + 1; if (fl && fl.length) loadBitmaps(fl, po.cols).then(function(fr) { if (po.tok !== tk) return; po.frames = fr; renderChars(); }); }; });
+        Array.prototype.forEach.call(pane.querySelectorAll('[data-s]'), function(inp) { var k = inp.getAttribute('data-s'); inp.onchange = function() { ch.poses[k].fps = Math.max(1, parseInt(this.value) || 24); }; });
+        Array.prototype.forEach.call(pane.querySelectorAll('canvas[data-p]'), function(c) { prevs.push({ cv: c, ch: ch, k: c.getAttribute('data-p') }); });
+        q('#mm-cdel').onclick = function() { if (confirm('Delete this character?')) { st.chars.splice(st.ci, 1); st.ci = 0; refreshCharOptions(); renderChars(); } };
+      }
+      if (!ch) pane.innerHTML = h;
+      var cl = pane.querySelector('#mm-cl'); cl.innerHTML = '';
+      st.chars.forEach(function(c, i) { var b = document.createElement('button'); b.className = 'chip' + (i === st.ci ? ' on' : ''); b.textContent = c.name; b.style.borderColor = '#b36bff'; b.onclick = function() { st.ci = i; renderChars(); }; cl.appendChild(b); });
+      pane.querySelector('#mm-cnew').onclick = function() { var c = newChar(); c.name = 'Character ' + (st.chars.length + 1); c.slug = cslug(c.name); st.chars.push(c); st.ci = st.chars.length - 1; refreshCharOptions(); renderChars(); };
+    }
+    function canvasBytes(cv) { return new Promise(function(res) { cv.toBlob(function(b) { b.arrayBuffer().then(function(ab) { res(new Uint8Array(ab)); }); }, 'image/png'); }); }
+    function buildChars() {
+      var out = [], enc = new TextEncoder(), jobs = [];
+      st.chars.forEach(function(ch) {
+        var slg = cslug(ch.name); if (!ch.poses.idle.frames.length) throw 'Character "' + ch.name + '" needs at least an Idle picture.';
+        var list = [], W = 1, H = 1;
+        POSES.forEach(function(ps) { var po = ch.poses[ps[0]]; po.frames.forEach(function(f, i) { list.push({ pose: ps[0], i: i, f: f }); W = Math.max(W, f.width); H = Math.max(H, f.height); }); });
+        var cols = Math.ceil(Math.sqrt(list.length)), rows = Math.ceil(list.length / cols), k = 1;
+        while (cols * W * k > 4096 || rows * H * k > 4096) k *= 0.75;
+        var cw = Math.ceil(W * k), chh = Math.ceil(H * k), at = document.createElement('canvas'); at.width = cols * cw; at.height = rows * chh; var x = at.getContext('2d');
+        var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<TextureAtlas imagePath="' + slg + '.png">\n';
+        list.forEach(function(e, n) {
+          var cx = (n % cols) * cw, cy = Math.floor(n / cols) * chh, w = e.f.width * k, hh = e.f.height * k;
+          x.drawImage(e.f, cx + (cw - w) / 2, cy + chh - hh, w, hh);
+          xml += '  <SubTexture name="' + e.pose + ('0000' + e.i).slice(-4) + '" x="' + cx + '" y="' + cy + '" width="' + cw + '" height="' + chh + '"/>\n';
+        });
+        xml += '</TextureAtlas>\n';
+        var flipRt = (ch.role === 'player' && !ch.facesLeft) || (ch.role === 'opponent' && ch.facesLeft), swap = { singLEFT: 'singRIGHT', singRIGHT: 'singLEFT' };
+        var anims = []; POSES.forEach(function(ps) { var po = ch.poses[ps[0]]; if (!po.frames.length) return; var nm = flipRt && swap[ps[0]] ? swap[ps[0]] : ps[0]; anims.push({ anim: nm, name: ps[0], fps: po.fps, loop: false, indices: [], offsets: [0, 0] }); });
+        var json = { animations: anims, no_antialiasing: false, image: 'characters/' + slg, position: [0, 0], healthicon: slg, flip_x: !!ch.facesLeft, healthbar_colors: hex2rgb(ch.color), camera_position: [0, 0], sing_duration: 4, scale: ch.scale / k };
+        out.push(['characters/' + slg + '.json', enc.encode(JSON.stringify(json))], ['images/characters/' + slg + '.xml', enc.encode(xml)]);
+        jobs.push(canvasBytes(at).then(function(d) { out.push(['images/characters/' + slg + '.png', d]); }));
+        if (!ch.iconCv) makeIcon(ch); if (ch.iconCv) jobs.push(canvasBytes(ch.iconCv).then(function(d) { out.push(['images/icons/icon-' + slg + '.png', d]); }));
+      });
+      return Promise.all(jobs).then(function() { return out; });
+    }
+
     // ================= assets rows =================
     var arows = [];
     function addRow() {
@@ -637,6 +733,7 @@
         jobs.push(bytes(instF).then(function(d) { add('songs/' + id + '/Inst.' + ext(instF), d); }));
         if (vocF) jobs.push(bytes(vocF).then(function(d) { add('songs/' + id + '/Voices.' + ext(vocF), d); }));
       }
+      if (st.chars.length) jobs.push(Promise.resolve().then(buildChars).then(function(l) { l.forEach(function(e) { add(e[0], e[1]); }); }));
       arows.forEach(function(r) { if (!r.file) return; var t = r.target.value.trim().replace(/^\/+/, '').replace(/\.\./g, ''); if (t) jobs.push(bytes(r.file).then(function(d) { add(t, d); })); });
       return Promise.all(jobs).then(function() {
         if (!files.length) throw 'Nothing to save yet. Add a song or at least one file.';
