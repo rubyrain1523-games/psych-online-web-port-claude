@@ -187,7 +187,10 @@ function __psychBoot(go0) {
 
       '<div class="pane" id="mm-chart"><div class="tool"><button class="b pri" id="mm-play">▶ Play</button><label>Snap<select id="mm-snap">' + SNAPS.map(function(s, i) { return '<option value="' + s[1] + '"' + (i === 3 ? ' selected' : '') + '>' + s[0] + '</option>'; }).join('') + '</select></label>' +
         '<label>Zoom<select id="mm-zoom"><option value="64">Small</option><option value="110" selected>Medium</option><option value="180">Large</option><option value="300">Huge</option></select></label>' +
-        '<button class="b on" id="mm-hit">Hit sounds</button><button class="b" id="mm-metro">Metronome</button><button class="b" id="mm-undo">↶ Undo</button><button class="b" id="mm-redo">↷ Redo</button><button class="b" id="mm-beats">Fill beats</button><button class="b" id="mm-clear">Clear</button><span class="grow"></span><span class="info" id="mm-info"></span></div>' +
+        '<button class="b on" id="mm-hit">Hit sounds</button><button class="b" id="mm-metro">Metronome</button><button class="b" id="mm-rec">● Record taps</button><button class="b" id="mm-undo">↶ Undo</button><button class="b" id="mm-redo">↷ Redo</button><button class="b" id="mm-beats">Fill beats</button><button class="b" id="mm-clear">Clear</button><span class="grow"></span><span class="info" id="mm-info"></span></div>' +
+        '<div class="tool" id="mm-recui" style="display:none"><b style="font-family:VCR,monospace">RECORD</b><label style="min-width:60px">Left<input id="mm-k0" readonly style="text-align:center"></label><label style="min-width:60px">Down<input id="mm-k1" readonly style="text-align:center"></label><label style="min-width:60px">Up<input id="mm-k2" readonly style="text-align:center"></label><label style="min-width:60px">Right<input id="mm-k3" readonly style="text-align:center"></label>' +
+          '<label>Record into<select id="mm-rside"><option value="4">Player lanes</option><option value="0">Opponent lanes</option></select></label><label>Quantize<select id="mm-rq"><option value="1">Snap to grid</option><option value="0">Exact timing</option></select></label><label>Offset (ms)<input id="mm-roff" type="number" value="0" step="5"></label>' +
+          '<span class="info" style="flex:1;min-width:220px">Click a box, press the key you want. Press Play and tap along - taps become notes. Hold a key to make a hold note.</span></div>' +
         '<div class="info" style="margin-bottom:8px">Click to place a note · click or right-click to remove · drag down for a hold · Shift = free placement · click BF/DAD chips to move the camera · Space = play, Ctrl+Z / Ctrl+Y</div>' +
         '<div class="ed" id="mm-ed" style="height:calc(100vh - 250px);min-height:320px"><canvas id="mm-cv"></canvas><div id="mm-sp"></div></div></div>' +
 
@@ -345,7 +348,7 @@ function __psychBoot(go0) {
       var btn = $('mm-play');
       if (!st.audio) { alert('Add an instrumental first (Song tab), or render music in the Music tab.'); return; }
       if (st.audio.paused) {
-        st.audio.currentTime = Math.max(0, (ed.scrollTop) / pxT() * mspt() / 1000); st.audio.play(); btn.textContent = '❚❚ Pause';
+        st.audio.currentTime = Math.max(0, (ed.scrollTop) / pxT() * mspt() / 1000); st.audio.play(); recSnap = false; btn.textContent = '❚❚ Pause';
         var evs = Object.keys(st.notes).map(function(k) { return +k.split('_')[0]; }).sort(function(a, b) { return a - b; }), last = st.audio.currentTime * 1000 / mspt(), ei = 0, lastBeat = Math.floor(last / TPB);
         while (ei < evs.length && evs[ei] <= last) ei++;
         (function tick() {
@@ -359,6 +362,40 @@ function __psychBoot(go0) {
       } else { st.audio.pause(); btn.textContent = '▶ Play'; }
     }
     $('mm-play').onclick = togglePlay;
+
+    // ---- record taps ----
+    var recOn = false, rkeys = ['a', 's', ';', "'"], rpend = {};
+    try { var sv = JSON.parse(localStorage.getItem('mmKeys') || 'null'); if (sv && sv.length === 4) rkeys = sv; } catch (e) {}
+    function showKeys() { for (var i = 0; i < 4; i++) $('mm-k' + i).value = rkeys[i] === ' ' ? 'Space' : rkeys[i].toUpperCase(); }
+    showKeys();
+    [0, 1, 2, 3].forEach(function(i) {
+      var inp = $('mm-k' + i);
+      inp.onfocus = function() { inp.value = 'press a key…'; };
+      inp.onblur = showKeys;
+      inp.onkeydown = function(e) {
+        e.preventDefault(); e.stopPropagation(); if (e.key === 'Escape' || e.key === 'Tab') { inp.blur(); return; }
+        var k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (rkeys.indexOf(k) >= 0 && rkeys[i] !== k) { rkeys[rkeys.indexOf(k)] = rkeys[i]; }
+        rkeys[i] = k; try { localStorage.setItem('mmKeys', JSON.stringify(rkeys)); } catch (e2) {} inp.blur();
+      };
+    });
+    $('mm-rec').onclick = function() { recOn = !recOn; this.classList.toggle('on', recOn); this.textContent = recOn ? '● Recording armed' : '● Record taps'; $('mm-recui').style.display = recOn ? '' : 'none'; if (recOn && st.audio && st.audio.paused) $('mm-info').textContent = 'Press Play, then tap your keys with the song.'; layout(); };
+    function recTick() { return Math.max(0, st.audio.currentTime * 1000 / mspt() - (parseFloat($('mm-roff').value) || 0) / mspt()); }
+    var recSnap = false;
+    document.addEventListener('keydown', function(e) {
+      if (!st || !recOn || cur !== 'chart' || !st.audio || st.audio.paused || e.repeat) return;
+      var tg = (e.target || {}).tagName || ''; if (/INPUT|SELECT|TEXTAREA/.test(tg)) return;
+      var k = e.key.length === 1 ? e.key.toLowerCase() : e.key, i = rkeys.indexOf(k); if (i < 0) return;
+      e.preventDefault(); e.stopPropagation();
+      if (!recSnap) { snapshot(); recSnap = true; }
+      var t = recTick(), sn = snapT(); if ($('mm-rq').value === '1') t = Math.round(t / sn) * sn; else t = Math.round(t);
+      var col = parseInt($('mm-rside').value) + i, key = t + '_' + col; st.notes[key] = 0; rpend[k] = { key: key, t: recTick() };
+      click(1800, .15, .03); draw();
+    }, true);
+    document.addEventListener('keyup', function(e) {
+      if (!st || !recOn) return; var k = e.key.length === 1 ? e.key.toLowerCase() : e.key, pd = rpend[k]; if (!pd) return; delete rpend[k];
+      var len = recTick() - pd.t; if (len >= 96 && st.notes[pd.key] !== undefined) { var sn = snapT(); st.notes[pd.key] = $('mm-rq').value === '1' ? Math.max(sn, Math.round(len / sn) * sn) : Math.round(len); }
+      e.preventDefault(); e.stopPropagation(); draw();
+    }, true);
     function keys(e) {
       if (!st || cur !== 'chart' || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
       if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
@@ -784,7 +821,7 @@ canvas{touch-action:none;outline:none}
     window.__psychModsEnabled = !!mods;
     panel.style.display = 'none';
     var sc = document.createElement('script');
-    sc.src = './PsychOnline.js?v=1793387908';
+    sc.src = './PsychOnline.js?v=1793388082';
     sc.onload = function() { __psychBoot(function() { lime.embed("PsychOnline", "openfl-content", 1280, 720, { parameters: {} }); }); };
     document.head.appendChild(sc);
     if (mods) addImportButton();
