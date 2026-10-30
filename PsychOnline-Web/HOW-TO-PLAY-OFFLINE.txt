@@ -1,0 +1,10 @@
+FRIDAY NIGHT FUNKIN' PSYCH ONLINE - OFFLINE PACKAGE
+
+1) Extract this whole zip to a folder (do not play from inside the zip).
+2) EASIEST: double-click start-server.bat (Windows, needs Python installed) or run: python3 serve.py
+   Then open  http://localhost:8123  in Chrome. Everything works with no internet (except online rooms/sign-in).
+3) NO PYTHON? Double-click index.html. Pick a mode, then when asked, choose THIS extracted folder.
+   (Chrome blocks local pages from reading files, so it needs you to point it at the folder. Nothing is uploaded.)
+   Hidden (about:blank) mode only works from the hosted website.
+
+Mod Maker: use the "Mod Maker" button on the start screen.
